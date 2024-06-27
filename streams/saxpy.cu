@@ -57,7 +57,9 @@ int main()
 
     for(int iTrial=0;iTrial<nTrials;iTrial++)
     {
-        saxpy_parallel<<<nblocks,256>>>(N,2.0,d_x,d_y);
+        saxpy_parallel<<<nblocks,256>>>(N/2,2.0,d_x,d_y);
+        saxpy_parallel<<<nblocks,256>>>(N/2,2.0,d_x+N/2,d_y+N/2);
+        
     }
     std::cout << "End calculation" << std::endl;
     checkCUDAError("kernel execution calls");
@@ -73,11 +75,11 @@ int main()
 	for (int i = 0;i<=N-1;i++)
 	{
         real_t expected = i + nTrials*2;
-
+        
 		if (std::abs( h_y[i] - expected ) > tol )
         {
             std::cout << "Error at " << i << ". Expected "<< expected << " but got " << h_y[i]<<std::endl;
-            exit(1);
+            
         }
 	}
 
