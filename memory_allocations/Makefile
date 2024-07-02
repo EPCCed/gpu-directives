@@ -14,6 +14,9 @@ all: matrix_matrix
 matrix_matrix: $(OBJ)
 	$(CXX) -o $@ $^ $(LFLAGS) $(LIBS)
 
+query_gpu: device_query.o
+	$(CXX) -o $@ $^ $(LFLAGS) $(LIBS)
+
 #omp_stream: $(OMP_OBJ)
 #	$(CXX) $(OMP_FLAGS) -o $@ $^ $(LFLAGS) $(LIBS)
 

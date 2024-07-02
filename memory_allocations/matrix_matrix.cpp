@@ -19,12 +19,11 @@ __host__ void myErrorHandler(cudaError_t ifail, const char * file,
 
 #define CUDA_ASSERT(call) { myErrorHandler((call), __FILE__, __LINE__, 1); }
 
-
 __global__ void matrix_matrix_kernel(double * A, double * B, double * C, int K, int M , int N)
 {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     int i = blockIdx.y * blockDim.y + threadIdx.y;
-
+    
     if( (i < K) && (j < M))
     {
         C[i*M + j ]=0;
@@ -166,14 +165,11 @@ int main(int argc, char ** argv)
         1
     );
 
-    
-
     matrix_matrix_kernel<<< gridSize,blockSize>>>(A_d,B_d,C_d,(int)K,(int)M,(int)N);
     CUDA_ASSERT( cudaPeekAtLastError() );
     CUDA_ASSERT( cudaDeviceSynchronize() );
     CUDA_ASSERT( cudaMemcpy(C, C_d, K*M*sizeof(double),  cudaMemcpyDeviceToHost) );
 
-    
     
     if(diff_matrix(C,C_test,K,M) > tol )
         {
