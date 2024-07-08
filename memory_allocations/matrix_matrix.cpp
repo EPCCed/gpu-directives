@@ -5,7 +5,7 @@
 #include <random>
 #include <iostream>
 #include <mkl_cblas.h>
-
+#include <omp.h>
 #include "matrix_cuda_kernels.h"
 
 
@@ -41,9 +41,9 @@ auto diff_matrix(double * A , double * B,size_t M,size_t N)
     for(size_t i=0;i<N;i++)
         for(size_t j=0;j<M;j++)
         {
-            diff+=std::abs(A[i*M + j ] - B[i*M+j]);
+            diff+=std::abs(A[i*M + j ] - B[i*M+j])/(A[i*M + j ]);
         }
-    return diff;
+    return diff/(N*M);
 }
 
 void print_matrix(double * A,size_t N,size_t M)
@@ -72,9 +72,10 @@ int main(int argc, char ** argv)
     double *C_d;
     double * C_test;
     const double tol=1e-7;
+    int seed = 1039;
+    int nTrials=10000;
 
     std::random_device rd;
-    std::mt19937 mt(rd());
 
     A = new double [K * N];
     B = new double [ M * N];
@@ -84,18 +85,18 @@ int main(int argc, char ** argv)
     CUDA_ASSERT( cudaMalloc(&A_d, K*N*sizeof(double)) );
     CUDA_ASSERT( cudaMalloc(&B_d, M*N*sizeof(double)) );
     CUDA_ASSERT( cudaMalloc(&C_d, K*M*sizeof(double)) );
-    
-
-
 
     
-    
-
-
+    std::mt19937 mt( seed );
+    set_random_matrix(C,K,M,mt );
+    mt = std::mt19937( seed );
+    set_random_matrix(C_test,K,M,mt );
 
     set_random_matrix(A,K,N,mt );
     set_random_matrix(B,N,M,mt );
-    set_random_matrix(C,K,M,mt );
+
+
+
 
     CUDA_ASSERT( cudaMemcpy(A_d, A, K*N*sizeof(double),  cudaMemcpyHostToDevice) );
     CUDA_ASSERT( cudaMemcpy(B_d, B, M*N*sizeof(double),  cudaMemcpyHostToDevice) );
@@ -112,22 +113,26 @@ int main(int argc, char ** argv)
     //         }
     //     }
     // }
-    
-    cblas_dgemm(  
-        CblasRowMajor,
-        CblasNoTrans, CblasNoTrans,
-        (int)K,
-        (int)M,
-        (int)N,
-        1e+0,
-        A,
-        (int)N,
-        B,
-        (int)M,
-        0e+0,
-        C_test,
-        (int)M
-    );
+
+
+    for(int i=0;i<nTrials;i++)
+    {
+        cblas_dgemm(  
+            CblasRowMajor,
+            CblasNoTrans, CblasNoTrans,
+            (int)K,
+            (int)M,
+            (int)N,
+            1e+0,
+            A,
+            (int)N,
+            B,
+            (int)M,
+            1e+0,
+            C_test,
+            (int)M
+        );
+    }
     // std::cout << "A" << std::endl;
     // print_matrix(A,K,N);
 
@@ -146,25 +151,32 @@ int main(int argc, char ** argv)
 
     int nThreads = 32;
     dim3 blockSize(nThreads,nThreads,1);
-    
+
     dim3 gridSize (
         (M + nThreads - 1 )/nThreads,
         (K + nThreads - 1 )/nThreads,
         1
     );
 
-    
+
     if (  ((K % nThreads) != 0) || ((M % nThreads) != 0 ) || ((N % nThreads) != 0) )
     {
         std::cout << "All dimensions should be a multiple of 32." << std::endl;
     }
 
 
-    matrix_matrix_shared_kernel<<< gridSize,blockSize>>>(A_d,B_d,C_d,(int)K,(int)M,(int)N);
-    CUDA_ASSERT( cudaPeekAtLastError() );
+    auto start = omp_get_wtime();
+    for(int i=0;i<nTrials;i++)
+    {
+        matrix_matrix_kernel<<< gridSize,blockSize>>>(A_d,B_d,C_d,(int)K,(int)M,(int)N);
+    }
     CUDA_ASSERT( cudaDeviceSynchronize() );
-    CUDA_ASSERT( cudaMemcpy(C, C_d, K*M*sizeof(double),  cudaMemcpyDeviceToHost) );
+    auto end = omp_get_wtime();
 
+
+
+    CUDA_ASSERT( cudaPeekAtLastError() );
+    CUDA_ASSERT( cudaMemcpy(C, C_d, K*M*sizeof(double),  cudaMemcpyDeviceToHost) );
     
     if(diff_matrix(C,C_test,K,M) > tol )
         {
@@ -180,5 +192,8 @@ int main(int argc, char ** argv)
     {
         std::cout << "Success!" << std::endl;
     }
+
+    std::cout << "Time per replica( micros ): " << (end - start)*1e+6/nTrials << std::endl;
+
 
 }

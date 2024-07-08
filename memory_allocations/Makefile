@@ -1,7 +1,7 @@
 CXX?= nvc++
 
-CFLAGS= -O2 -cuda  -fmax-errors=1
-LFLAGS=  -lmkl_gf_lp64 -lmkl_core -lmkl_sequential -cuda
+CFLAGS= -O2 -cuda  -fmax-errors=1 -fopenmp
+LFLAGS=  -lmkl_gf_lp64 -lmkl_core -lmkl_sequential -cuda -fopenmp
 
 OBJ = matrix_matrix.o matrix_cuda_kernels.o
 

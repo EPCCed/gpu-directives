@@ -7,7 +7,7 @@ __global__ void matrix_matrix_kernel(double * A, double * B, double * C, int K, 
 
     if( (i < K) && (j < M))
     {
-        C[i*M + j ]=0;
+        //C[i*M + j ]=0;
         
         for(int l=0;l<N;l++)
         {
@@ -49,7 +49,7 @@ __global__ void matrix_matrix_shared_kernel(double * A, double * B, double * C, 
 
     }
 
-    C[i*M + j ]=tmp;
+    C[i*M + j ]+=tmp;
 
 }
 
