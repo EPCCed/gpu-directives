@@ -6,6 +6,9 @@
 #include <iostream>
 #include <mkl_cblas.h>
 
+#include "matrix_cuda_kernels.h"
+
+
 __host__ void myErrorHandler(cudaError_t ifail, const char * file,
                              int line, int fatal) {
     if (ifail != cudaSuccess) {
@@ -19,22 +22,7 @@ __host__ void myErrorHandler(cudaError_t ifail, const char * file,
 
 #define CUDA_ASSERT(call) { myErrorHandler((call), __FILE__, __LINE__, 1); }
 
-__global__ void matrix_matrix_kernel(double * A, double * B, double * C, int K, int M , int N)
-{
-    int j = blockIdx.x * blockDim.x + threadIdx.x;
-    int i = blockIdx.y * blockDim.y + threadIdx.y;
-    
-    if( (i < K) && (j < M))
-    {
-        C[i*M + j ]=0;
-        
-        for(int l=0;l<N;l++)
-        {
-            C[i*M + j ]+=A[i*N + l]*B[l*M + j];
-        }
-    }
 
-}
 
 
 void set_random_matrix(double * A, size_t N, size_t M,std::mt19937 &rd)
@@ -75,7 +63,7 @@ void print_matrix(double * A,size_t N,size_t M)
 int main(int argc, char ** argv)
 {   
 
-    size_t N=2,M=3,K=4;
+    size_t N=32*4,M=32*4,K=32*8;
     double * A;
     double * B;
     double * C;
@@ -92,7 +80,7 @@ int main(int argc, char ** argv)
     B = new double [ M * N];
     C = new double [ K *M];
     C_test = new double [ K *M];
-    
+
     CUDA_ASSERT( cudaMalloc(&A_d, K*N*sizeof(double)) );
     CUDA_ASSERT( cudaMalloc(&B_d, M*N*sizeof(double)) );
     CUDA_ASSERT( cudaMalloc(&C_d, K*M*sizeof(double)) );
@@ -106,7 +94,7 @@ int main(int argc, char ** argv)
 
 
     set_random_matrix(A,K,N,mt );
-    set_random_matrix(B,M,N,mt );
+    set_random_matrix(B,N,M,mt );
     set_random_matrix(C,K,M,mt );
 
     CUDA_ASSERT( cudaMemcpy(A_d, A, K*N*sizeof(double),  cudaMemcpyHostToDevice) );
@@ -160,12 +148,19 @@ int main(int argc, char ** argv)
     dim3 blockSize(nThreads,nThreads,1);
     
     dim3 gridSize (
-        (K + nThreads )/nThreads,
-        (M + nThreads )/nThreads,
+        (M + nThreads - 1 )/nThreads,
+        (K + nThreads - 1 )/nThreads,
         1
     );
 
-    matrix_matrix_kernel<<< gridSize,blockSize>>>(A_d,B_d,C_d,(int)K,(int)M,(int)N);
+    
+    if (  ((K % nThreads) != 0) || ((M % nThreads) != 0 ) || ((N % nThreads) != 0) )
+    {
+        std::cout << "All dimensions should be a multiple of 32." << std::endl;
+    }
+
+
+    matrix_matrix_shared_kernel<<< gridSize,blockSize>>>(A_d,B_d,C_d,(int)K,(int)M,(int)N);
     CUDA_ASSERT( cudaPeekAtLastError() );
     CUDA_ASSERT( cudaDeviceSynchronize() );
     CUDA_ASSERT( cudaMemcpy(C, C_d, K*M*sizeof(double),  cudaMemcpyDeviceToHost) );
@@ -174,6 +169,11 @@ int main(int argc, char ** argv)
     if(diff_matrix(C,C_test,K,M) > tol )
         {
             std::cout << "Failed! " <<std::endl;
+            std::cout << "C " << std::endl;
+            print_matrix(C,K,M);
+            std::cout << "C ref." << std::endl;
+            print_matrix(C_test,K,M);
+
             exit(1);
         }
     else 

@@ -3,13 +3,14 @@ CXX?= nvc++
 CFLAGS= -O2 -cuda  -fmax-errors=1
 LFLAGS=  -lmkl_gf_lp64 -lmkl_core -lmkl_sequential -cuda
 
-OBJ = matrix_matrix.o
+OBJ = matrix_matrix.o matrix_cuda_kernels.o
 
 all: matrix_matrix
 
 
 %.o: %.cpp
-	$(CXX) $(OMP_FLAGS) -c -o $@ $< $(CFLAGS)
+	$(CXX)  -c -o $@ $< $(CFLAGS)
+
 
 matrix_matrix: $(OBJ)
 	$(CXX) -o $@ $^ $(LFLAGS) $(LIBS)
