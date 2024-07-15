@@ -63,7 +63,7 @@ void print_matrix(double * A,size_t N,size_t M)
 int main(int argc, char ** argv)
 {   
 
-    size_t N=32*4,M=32*4,K=32*8;
+    size_t N=32*1,M=32*1,K=32*1;
     double * A;
     double * B;
     double * C;
@@ -73,7 +73,7 @@ int main(int argc, char ** argv)
     double * C_test;
     const double tol=1e-7;
     int seed = 1039;
-    int nTrials=10000;
+    int nTrials=10;
 
     std::random_device rd;
 
@@ -150,11 +150,11 @@ int main(int argc, char ** argv)
 
 
     int nThreads = 32;
-    dim3 blockSize(nThreads,nThreads,1);
+    dim3 blockSize(AN,AK);
 
     dim3 gridSize (
-        (M + nThreads - 1 )/nThreads,
-        (K + nThreads - 1 )/nThreads,
+        (M + AN - 1 )/AN,
+        (K + AK - 1 )/AK,
         1
     );
 
@@ -168,7 +168,7 @@ int main(int argc, char ** argv)
     auto start = omp_get_wtime();
     for(int i=0;i<nTrials;i++)
     {
-        matrix_matrix_kernel<<< gridSize,blockSize>>>(A_d,B_d,C_d,(int)K,(int)M,(int)N);
+        matrix_matrix_shared_kernel2<<< gridSize,blockSize>>>(A_d,B_d,C_d,(int)K,(int)M,(int)N);
     }
     CUDA_ASSERT( cudaDeviceSynchronize() );
     auto end = omp_get_wtime();

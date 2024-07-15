@@ -1,4 +1,9 @@
 #define BLOCK_SIZE 32
+#define AK 16
+#define BM 32
+#define AN 32
+#define BN 32
+
 
 __global__ void matrix_matrix_kernel(double * A, double * B, double * C, int K, int M , int N)
 {
@@ -16,7 +21,6 @@ __global__ void matrix_matrix_kernel(double * A, double * B, double * C, int K, 
     }
 
 }
-
 
 __global__ void matrix_matrix_shared_kernel(double * A, double * B, double * C, int K, int M , int N)
 {
@@ -51,7 +55,58 @@ __global__ void matrix_matrix_shared_kernel(double * A, double * B, double * C, 
 
     C[i*M + j ]+=tmp;
 
+};
+
+
+__global__ void matrix_matrix_shared_kernel2(double * A, double * B, double * C, int K, int M , int N)
+{
+    int j = blockIdx.x * BM + threadIdx.x;
+    int i = blockIdx.y * AK + threadIdx.y;
+
+    __shared__ double As[AK*AN];
+    __shared__ double Bs[BN*BM];
+
+    int ai_start =blockIdx.y * AK;
+    int bj_start=blockIdx.x * BM;
+
+    double tmp=0;
+
+    if ( (i< K) && (j<M) )
+    {
+        for( int aj_start=0, bi_start=0;aj_start<M;aj_start+=AN,bi_start+=BN)
+        {
+            if (( (ai_start + threadIdx.y) < K) && (aj_start + threadIdx.x) < N )
+            {
+                As[ threadIdx.y*AN + threadIdx.x   ] = A[ (ai_start + threadIdx.y)  * N + aj_start + threadIdx.x  ];
+
+            }
+
+            if (( (bi_start + threadIdx.y) < N) && (bj_start + threadIdx.x) < M )
+            {
+                Bs[ threadIdx.y*BM + threadIdx.x   ] = B[ (bi_start + threadIdx.y)  * M + bj_start + threadIdx.x  ];
+
+            }
+
+
+            __syncthreads();
+
+            for (int k=0;k<AN;k++)
+            {
+                if ( aj_start + threadIdx.x < N )
+                {
+                    tmp+= As[threadIdx.y*AN  + k  ]*Bs[ k*BN + threadIdx.x];
+                }
+                
+            }
+
+            __syncthreads();
+
+        }
+
+        C[i*M + j ]+=tmp;
+    }
 }
+
 
 
 
