@@ -1,5 +1,6 @@
 # Programming GPU with directives
 
+Day 1
 
 | Session | Topic | Notes 
 --- | --- | ---- 
@@ -9,6 +10,7 @@
 | |  Introduction to OpenMP - Data movement | data constructs, simple mappings etc. | 
  | | Advanced Topics | custom mappers, custom allocators, inter-operability with CUDA/HIP ( cuBLAS), streams, tasking ( ? )
 
+Day 2
 
 | Session | Topic | Notes 
 --- | --- | ---- 
