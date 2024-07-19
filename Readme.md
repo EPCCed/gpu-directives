@@ -7,15 +7,19 @@ Day 1
  | | GPU programming APIS | Introductions to GPU programming APIs ( CUDA, HIP , SYCL, OpenMP, OpenACC, kokkos etc..) |
 | | GPU architectures | | 
 | | Introduction to OpenMP | How to map openmp concepts ( teams, parallel region, data movements ) to hardware concepts | 
+| | practical |
 | |  Introduction to OpenMP - Data movement | data constructs, simple mappings etc. | 
- | | Advanced Topics | custom mappers, custom allocators, inter-operability with CUDA/HIP ( cuBLAS), streams, tasking ( ? )
+|| practical |
 
 Day 2
 
 | Session | Topic | Notes 
 --- | --- | ---- 
+ | | Advanced Topics |
+ | | Practical |
  | | Performance |
 | | Profiling | |
+|| Practical | |
 | | OpenACC (? ) | Mapping of OpenMP concepts to OpenACC concepts
 
 ## Advanced OpenMP tentative subjects ideas
