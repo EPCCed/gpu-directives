@@ -95,9 +95,6 @@ int main(int argc, char ** argv)
     set_random_matrix(A,K,N,mt );
     set_random_matrix(B,N,M,mt );
 
-
-
-
     CUDA_ASSERT( cudaMemcpy(A_d, A, K*N*sizeof(double),  cudaMemcpyHostToDevice) );
     CUDA_ASSERT( cudaMemcpy(B_d, B, M*N*sizeof(double),  cudaMemcpyHostToDevice) );
     CUDA_ASSERT( cudaMemcpy(C_d, C, K*M*sizeof(double),  cudaMemcpyHostToDevice) );
