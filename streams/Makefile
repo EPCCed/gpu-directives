@@ -1,6 +1,6 @@
 CXX?= nvc++
 
-CFLAGS= -O2
+CFLAGS= -O3
 LFLAGS=
 OMP_FLAGS=  -fopenmp -mp=gpu
 
