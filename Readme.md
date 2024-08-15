@@ -1,6 +1,6 @@
 # Programming GPU with directives
 
-## Tentative schedule
+## Tentative outline
 
 Day 1
 
