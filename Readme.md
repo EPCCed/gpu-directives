@@ -22,3 +22,8 @@ Day 2
 2.3 | Performance |
 2.4 | Practical |
 2.5 | OpenACC (? ) | Mapping of OpenMP concepts to OpenACC concepts
+
+# Training material
+
+There is a shared folder on Archer2 in `/work/z19/z19/shared/gpu_directives_course` , containing some base material we can use to develop the course.
+
