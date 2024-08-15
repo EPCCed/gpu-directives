@@ -17,7 +17,8 @@ Day 2
 
 | Session | Topic | Notes 
 --- | --- | ---- 
- 2.1 | Advanced Topics |
- 2.3 | Performance |
- 2.4 | Practical |
- 2.5 | OpenACC (? ) | Mapping of OpenMP concepts to OpenACC concepts
+2.1 | Advanced Topics |
+2.2 | Practical |
+2.3 | Performance |
+2.4 | Practical |
+2.5 | OpenACC (? ) | Mapping of OpenMP concepts to OpenACC concepts
