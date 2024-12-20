@@ -172,9 +172,21 @@ void init_laplacian_gaussian(double alpha, double * field, const grid * g)
         {
             double r2=g->x(i)* g->x(i) + g->y(j)*g->y(j);
             size_t k = g->get_index(i,j);
-            field[ k  ] = -2*( 2 - 2*alpha*r2)* std::exp( - alpha* r2 );
+            field[ k  ] = -2*alpha*( 2 - 2*alpha*r2)* std::exp( - alpha* r2 );
         }
 
+}
+
+double get_norm(const double * field, const grid * g)
+{
+    double norm=0;
+    for(int i=0;i<g->n[0];i++)
+        for( int j=0;j<g->n[1];j++)
+        {
+            size_t k = g->get_index(i,j);
+            norm+=field[ k  ] * (g->dx[0] * g->dx[1]);
+        }
+    return norm;
 }
 
 
@@ -184,7 +196,7 @@ int main(int argc, char ** argv)
     size_t nx = 100;
     size_t ny= 100;
 
-    int niterations = 10000;
+    int niterations = 100000;
 
     double left_box[2]= {-1,-1};
     double right_box[2]= {1,1};
@@ -202,6 +214,8 @@ int main(int argc, char ** argv)
     double * phi_new;
 
     init_laplacian_gaussian(10.0 ,rho,&current_grid);
+    print_to_file(rho,&current_grid,"rho.dat");
+
     init_constant(1.0,phi1,&current_grid);
     init_constant(0.0,phi2,&current_grid);
     apply_periodic_bc(rho, &current_grid);
@@ -210,14 +224,14 @@ int main(int argc, char ** argv)
 
     phi_new = phi1;
     phi_old = phi2;
-
+    
     for (int i=0;i<niterations;i++)
     {
         std::swap(phi_new,phi_old);
         compute_jacobi(phi_new,phi_old,rho,&current_grid);
         apply_periodic_bc(phi_new, &current_grid);
     }
-    
+
     print_to_file(phi2,&current_grid,"phi.dat");
 
 }
