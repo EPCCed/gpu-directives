@@ -5,10 +5,23 @@
 #include <iostream>
 #include <cmath>
 #include <fstream>
-
+/**
+ * Defineds a grid structure.
+ * The underlying data structure contains ghost cells and is ordered row-wise.
+ * 
+ * (-1,-1) , (-1,0) ... (-1,n[1])
+ * .                    .
+ * .                    .
+ * .                    .
+ * (n[0] + 1,-1) , ... , (n[0] + 1,n[1])
+ * 
+*/
 struct grid
 {
-
+    /**
+     * Returns the index of the location in memory associated with cell (i,j) .
+     * i.e : (0,0) -> 1() + n[1] + 2
+    */
     inline auto get_index(size_t i, size_t j) const { return (j +1) + (i+1)*(n[1]+2);};
 
     double x(size_t i) const {return start[0] + dx[0] * i  ;}
@@ -40,9 +53,10 @@ grid make_grid(const double start[2],const double end[2], size_t n[2]  )
     return new_grid;
 }
 
-/// Makes a step of the jacobi interaction. Compute the new field, given the hold field and the know densitiy field.
 
-
+/**
+ * Makes a step of the jacobi interaction. Compute the new field, given the hold field and the know densitiy field.
+*/ 
 void compute_jacobi(double * phi_new, const double * phi_old, const double * rho, const grid * g)
 {
     auto nx = g->n[0];
@@ -64,7 +78,11 @@ void compute_jacobi(double * phi_new, const double * phi_old, const double * rho
 };
 
 
-/// initialise the field with a isotropic gaussian
+/**
+ * 
+ * Initialise the file field with a isotropic gaussian
+ */
+
 void init_gaussian(double alpha, double * field, const grid * g)
 {
     for(int i=0;i<g->n[0];i++)
@@ -75,8 +93,9 @@ void init_gaussian(double alpha, double * field, const grid * g)
             field[ k  ] = std::exp( - alpha* r2 );
         }
 };
-
-/// Applies periodic boundary condition by filling ghost cells
+/**
+ * Applies periodic boundary condition by filling ghost cells
+*/
 void apply_periodic_bc(double * field, const grid * g)
 {
     for(int i=0;i<g->n[0];i++)
@@ -108,11 +127,11 @@ void apply_periodic_bc(double * field, const grid * g)
 
 
 
-
-/// initialise the field with a constant
+/**
+ * Initialize the field with a constant
+*/
 void init_constant(double alpha, double * field, const grid * g)
 {
-
     for(int i=0;i<g->n[0];i++)
         for( int j=0;j<g->n[1];j++)
         {
@@ -123,7 +142,9 @@ void init_constant(double alpha, double * field, const grid * g)
 };
 
 
-/// Print field to a binary file
+/**
+ * Save the field to a file in binary format
+*/
 void print_to_file(const double * field, const grid * g,std::string filename)
 {
     std::ofstream f;
@@ -140,7 +161,9 @@ void print_to_file(const double * field, const grid * g,std::string filename)
 
 };
 
-/// initialise the field with the laplacian of a gaussian. Intended for testing
+/**
+ * Initialise the field with the laplacian of a gaussian. Mostly meant for testing.
+*/
 void init_laplacian_gaussian(double alpha, double * field, const grid * g)
 {
 
@@ -153,10 +176,6 @@ void init_laplacian_gaussian(double alpha, double * field, const grid * g)
         }
 
 }
-
-
-
-/// initialise the field with the laplacian of a gaussian. Intended for testing.
 
 
 
@@ -198,8 +217,7 @@ int main(int argc, char ** argv)
         compute_jacobi(phi_new,phi_old,rho,&current_grid);
         apply_periodic_bc(phi_new, &current_grid);
     }
-
-
+    
     print_to_file(phi2,&current_grid,"phi.dat");
 
 }
