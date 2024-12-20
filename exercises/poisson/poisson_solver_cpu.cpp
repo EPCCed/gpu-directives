@@ -107,7 +107,7 @@ void compute_jacobi(double * phi_new, const double * phi_old, const double * rho
     double aspect2 = (dy/dx)*(dy/dx);
     
     // interior
-    #pragma omp target teams distribute parallel for collapse(2)
+    //#pragma omp target teams distribute parallel for collapse(2)
     for(int i=0;i<nx;i++)
         for( int j=0;j<ny;j++)
         {
@@ -139,7 +139,7 @@ void init_gaussian(double alpha, double * field, const grid * g)
 */
 void apply_periodic_bc(double * field, const grid * g)
 {
-    #pragma omp target teams distribute parallel for
+    //#pragma omp target teams distribute parallel for
     for(int i=0;i< g->n[0];i++)
         {
             auto k_ghost_left = g->get_index(i,-1);
@@ -153,7 +153,7 @@ void apply_periodic_bc(double * field, const grid * g)
         }
 
 
-   #pragma omp target teams distribute parallel for
+   //#pragma omp target teams distribute parallel for
    for(int j=0;j<g->n[1];j++)
     {
              auto k_ghost_top = g->get_index(-1,j);
@@ -277,7 +277,7 @@ int main(int argc, char ** argv)
     total_time_timer.start();
 
 
-    #pragma omp target data map(tofrom:phi_new[0:(nx+2)*(ny+2)],phi_old[0:(nx+2)*(ny+2)], rho[0:(nx+2)*(ny+2)],current_grid,current_grid.n[0:2],current_grid.dx[0:2],current_grid.start[0:2],current_grid.end[0:2])
+    //#pragma omp target data map(tofrom:phi_new[0:(nx+2)*(ny+2)],phi_old[0:(nx+2)*(ny+2)], rho[0:(nx+2)*(ny+2)],current_grid,current_grid.n[0:2],current_grid.dx[0:2],current_grid.start[0:2],current_grid.end[0:2])
     {
         apply_periodic_bc(rho, &current_grid);
         apply_periodic_bc(phi_new, &current_grid);
