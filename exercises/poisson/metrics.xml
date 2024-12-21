@@ -1,0 +1,9 @@
+#include "/opt/rocm/lib/rocprofiler/metrics.xml"
+
+<global>
+<metric
+    name="Occupancy"
+    descr="Fraction of active wavefronts relative to the theorethical maximum number of active wavefronts"
+    expr=SQ_LEVEL_WAVES*0+SQ_ACCUM_PREV_HIRES/GRBM_GUI_ACTIVE,16
+></metric>
+</global>
