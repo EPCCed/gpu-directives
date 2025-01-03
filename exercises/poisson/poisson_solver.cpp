@@ -6,6 +6,7 @@
 #include <cmath>
 #include <fstream>
 #include <omp.h>
+#include <roctracer/roctx.h>
 
 /**
  * Defineds a grid structure.
@@ -44,7 +45,7 @@ std::ostream& operator<<(std::ostream & os, const timer & t)
     os << t.get_name() << ": ";
     if (t.get_niterations() > 1) 
     {
-        os << t.get_time()*1000./t.get_niterations() << " micros/it"  ;
+        os << t.get_time()*1000./t.get_niterations() << " ms/it"  ;
     }
     else
     {
@@ -134,6 +135,40 @@ void init_gaussian(double alpha, double * field, const grid * g)
             field[ k  ] = std::exp( - alpha* r2 );
         }
 };
+
+/**
+ * Applies Drichlet boundary conditions.
+ * @param value Value to be set on all ghost cells
+ * @param g Grid definition the space discretization of a field
+ * @param field An array of double containing the field values
+*/
+void apply_drichlet_bc(double * field, const grid * g, double value)
+{
+
+    for(int i=0;i< g->n[0];i++)
+        {
+            auto k_ghost_left = g->get_index(i,-1);
+            auto k_ghost_right = g->get_index(i,g->n[1] );
+
+            field[ k_ghost_left ] = value;
+            field[ k_ghost_right ] = value;            
+        }
+   
+
+   for(int j=0;j<g->n[1];j++)
+    {
+             auto k_ghost_top = g->get_index(-1,j);
+             auto k_ghost_bottom = g->get_index(g->n[0],j );
+
+             field[ k_ghost_bottom ] = value;
+             field[ k_ghost_top ] = value; 
+    }
+
+
+}
+
+
+
 /**
  * Applies periodic boundary condition by filling ghost cells
 */
@@ -240,7 +275,7 @@ int main(int argc, char ** argv)
     size_t ny= 500;
 
     int niterations = 10000;
-
+    
     double left_box[2]= {-1,-1};
     double right_box[2]= {1,1};
     size_t shape[2] = {nx,ny};
@@ -259,11 +294,13 @@ int main(int argc, char ** argv)
     init_laplacian_gaussian(10.0 ,rho,&current_grid);
     print_to_file(rho,&current_grid,"rho.dat");
 
-    init_constant(1.0,phi1,&current_grid);
-    init_constant(0.0,phi2,&current_grid);
+    init_constant(0.0,phi1,&current_grid);
+    init_gaussian(20.0 ,rho,&current_grid);
     
+    apply_drichlet_bc(rho, &current_grid,0);
+    apply_drichlet_bc(phi1, &current_grid,0);
+    apply_drichlet_bc(phi2, &current_grid,0);
 
-    
 
     phi_new = phi1;
     phi_old = phi2;
@@ -279,20 +316,24 @@ int main(int argc, char ** argv)
 
     #pragma omp target data map(tofrom:phi_new[0:(nx+2)*(ny+2)],phi_old[0:(nx+2)*(ny+2)], rho[0:(nx+2)*(ny+2)],current_grid,current_grid.n[0:2],current_grid.dx[0:2],current_grid.start[0:2],current_grid.end[0:2])
     {
-        apply_periodic_bc(rho, &current_grid);
-        apply_periodic_bc(phi_new, &current_grid);
-        apply_periodic_bc(phi_old, &current_grid);
-
+        
+        
         for (int i=0;i<niterations;i++)
         {
+
             std::swap(phi_new,phi_old);
             compute_jacobi_timer.start();
+            roctx_range_id_t roctx_jacobi_id = roctxRangeStartA("jacobi");
             compute_jacobi(phi_new,phi_old,rho,&current_grid);
+            roctxRangeStop(roctx_jacobi_id);
+
             compute_jacobi_timer.stop();
 
-            apply_periodic_bc_timer.start();
-            apply_periodic_bc(phi_new, &current_grid);
-            apply_periodic_bc_timer.stop();
+            //apply_periodic_bc_timer.start();
+            //roctx_range_id_t roctx_bc_id = roctxRangeStartA("periodic_bc");
+            //apply_periodic_bc(phi_new, &current_grid);
+            //roctxRangeStop(roctx_bc_id);
+            //apply_periodic_bc_timer.stop();
 
         }
         
