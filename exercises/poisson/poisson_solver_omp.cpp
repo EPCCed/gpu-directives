@@ -6,6 +6,8 @@
 #include <cmath>
 #include <fstream>
 #include <omp.h>
+#include <roctracer/roctx.h>
+
 
 /**
  * Defineds a grid structure.
@@ -156,6 +158,7 @@ void apply_drichlet_bc(double * field, const grid_t * g, double value)
  * Makes a step of the jacobi interaction. Compute the new field, given the hold field and the know densitiy field.
 */
 
+
 void compute_jacobi(field_t * phi_new, field_t * phi_old, field_t * rho, int nFields)
 {
 
@@ -165,7 +168,7 @@ void compute_jacobi(field_t * phi_new, field_t * phi_old, field_t * rho, int nFi
         auto field_phi_old=phi_old[iField].get_data();
         auto field_rho=rho[iField].get_data();
         auto g = phi_new[iField].get_grid();
-        
+
         //#pragma omp target data map(tofrom:field_phi_new[0:g.size()],field_phi_old[0:g.size()],g,g.n[0:2],g.dx[0:2],field_rho[0:g.size()])
         {
             #pragma omp target teams distribute parallel for collapse(2)
@@ -181,10 +184,11 @@ void compute_jacobi(field_t * phi_new, field_t * phi_old, field_t * rho, int nFi
                     auto dx = g->dx[0];
                     auto dy = g->dx[1];
                     double aspect2 = (dy/dx)*(dy/dx);
-
+                    
                     field_phi_new[ k ] = 0.5*( (field_phi_old[k - 1] +  field_phi_old[k + 1 ])/(1 + 1./aspect2) + (field_phi_old[k - (ny+2) ] +  field_phi_old[(k + ny+2) ])/(1 + aspect2) - field_rho[k] * dx*dx/( 1 + aspect2   ) );
                 }
             }
+
     }
 
 };
@@ -325,7 +329,6 @@ int main(int argc, char ** argv)
     field_t * phi1 = new field_t[nFields];
     field_t * phi2 = new field_t[nFields];
 
-    
     for (int iField=0 ; iField < nFields; iField++ )
     {
         
@@ -375,12 +378,21 @@ int main(int argc, char ** argv)
 
         #pragma omp target data map(tofrom: phi_new[0:nFields],phi_old[0:nFields],rho[0:nFields])
         {
+
+            if ( i==0 ) 
+            {
+                compute_jacobi(phi_new,phi_old,rho,nFields);
+            }
+
             for (int iBlock=0;(iBlock<nIterationsOutput) and (i<niterations);iBlock++)
             {
                 std::swap(phi_new,phi_old);
+                roctx_range_id_t roctx_jacobi_id = roctxRangeStartA("jacobi");
                 compute_jacobi_timer.start();
                 compute_jacobi(phi_new,phi_old,rho,nFields);
                 compute_jacobi_timer.stop();
+                roctxRangeStop(roctx_jacobi_id);
+
                 i++;
 
             }

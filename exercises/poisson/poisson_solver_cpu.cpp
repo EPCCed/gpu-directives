@@ -308,14 +308,13 @@ int main(int argc, char ** argv)
 {
 
     int nFields=1; // number of equations to solve
-    int niterations = 10000;  // number of time steps
-    int nIterationsOutput = niterations/10; // Number of iterations between successive outputs
+    int niterations = 10;  // number of time steps
+    int nIterationsOutput = niterations/1; // Number of iterations between successive outputs
 
     double left_box[2]= {-1,-1}; // Coordinate of the bottom left corner
     double right_box[2]= {1,1}; // Cooridinat of the top right corner
     size_t shape[2] = {100, 100 }; // Grid shape
-
-
+    
     std::cout << "Initialise" << std::endl;
 
     auto current_grid = make_grid(left_box,right_box,shape);
