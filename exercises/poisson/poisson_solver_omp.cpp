@@ -111,7 +111,6 @@ struct field_t
     auto get_grid() {return grid;}
     const auto get_grid() const {return grid;}
 
-    private:
 
     double * data;
     grid_t * grid;
@@ -162,26 +161,26 @@ void compute_jacobi(field_t * phi_new, field_t * phi_old, field_t * rho, int nFi
 
     for(int iField=0 ; iField < nFields ; iField++ )
     {
-        auto g = phi_new[iField].get_grid();
         auto field_phi_new=phi_new[iField].get_data();
         auto field_phi_old=phi_old[iField].get_data();
         auto field_rho=rho[iField].get_data();
-
-        auto nx = g->n[0];
-        auto ny = g->n[1];
-
-        auto dx = g->dx[0];
-        auto dy = g->dx[1];
-        double aspect2 = (dy/dx)*(dy/dx);
+        auto g = phi_new[iField].get_grid();
         
-        #pragma omp target data map(tofrom:field_phi_new[0:g->size()],field_phi_old[0:g->size()],*g,g->n[0:2],g->dx[0:2],field_rho[0:g->size()])
+        //#pragma omp target data map(tofrom:field_phi_new[0:g.size()],field_phi_old[0:g.size()],g,g.n[0:2],g.dx[0:2],field_rho[0:g.size()])
         {
             #pragma omp target teams distribute parallel for collapse(2)
-            for(int i=0; i<nx ; i++)
-                for( int j=0; j<ny ; j++)
+            for(int i=0; i<g->n[0] ; i++)
+                for( int j=0; j<g->n[1] ; j++)
                 {
 
                     auto k = g->get_index(i,j);
+
+                    auto nx = g->n[0];
+                    auto ny = g->n[1];
+
+                    auto dx = g->dx[0];
+                    auto dy = g->dx[1];
+                    double aspect2 = (dy/dx)*(dy/dx);
 
                     field_phi_new[ k ] = 0.5*( (field_phi_old[k - 1] +  field_phi_old[k + 1 ])/(1 + 1./aspect2) + (field_phi_old[k - (ny+2) ] +  field_phi_old[(k + ny+2) ])/(1 + aspect2) - field_rho[k] * dx*dx/( 1 + aspect2   ) );
                 }
@@ -316,8 +315,7 @@ int main(int argc, char ** argv)
 
     double left_box[2]= {-1,-1}; // Coordinate of the bottom left corner
     double right_box[2]= {1,1}; // Cooridinat of the top right corner
-    size_t shape[2] = {100, 100 }; // Grid shape
-
+    size_t shape[2] = {500, 500 }; // Grid shape
 
     std::cout << "Initialise" << std::endl;
 
@@ -327,13 +325,13 @@ int main(int argc, char ** argv)
     field_t * phi1 = new field_t[nFields];
     field_t * phi2 = new field_t[nFields];
 
+    
     for (int iField=0 ; iField < nFields; iField++ )
     {
         
         rho[iField].init( &current_grid);
         phi1[iField].init( &current_grid);
         phi2[iField].init(&current_grid);
-
 
         init_laplacian_gaussian( 10.0 ,rho[iField].get_data(), &current_grid );
         init_gaussian( 20 ,phi1[iField].get_data(),&current_grid, 0.5 );
@@ -342,7 +340,7 @@ int main(int argc, char ** argv)
         apply_drichlet_bc(rho[iField].get_data(), &current_grid, 0);
         apply_drichlet_bc(phi1[iField].get_data(), &current_grid, 0);
         apply_drichlet_bc(phi2[iField].get_data(), &current_grid, 0);
-        
+
         print_to_file( rho[iField].get_data(), &current_grid, "rho" + std::to_string(iField) + ".dat" );
         print_to_file( phi1[iField].get_data(), &current_grid, "phi_initial" + std::to_string(iField) + ".dat" );
 
@@ -370,16 +368,23 @@ int main(int argc, char ** argv)
         /**
          * Calculations 
         */
-        for (int iBlock=0;(iBlock<nIterationsOutput) and (i<niterations);iBlock++)
+
+        #pragma omp declare mapper(grid_t g) map(g,g.n[0:2], g.dx[0:2],g.start[0:2],g.end[0:2]  )
+
+        #pragma omp declare mapper(field_t f) map(f,f.data[0:f.get_grid()->size()], *f.grid  )
+
+        #pragma omp target data map(tofrom: phi_new[0:nFields],phi_old[0:nFields],rho[0:nFields])
         {
-            std::swap(phi_new,phi_old);
-            compute_jacobi_timer.start();
-            compute_jacobi(phi_new,phi_old,rho,nFields);
-            compute_jacobi_timer.stop();
-            i++;
+            for (int iBlock=0;(iBlock<nIterationsOutput) and (i<niterations);iBlock++)
+            {
+                std::swap(phi_new,phi_old);
+                compute_jacobi_timer.start();
+                compute_jacobi(phi_new,phi_old,rho,nFields);
+                compute_jacobi_timer.stop();
+                i++;
 
+            }
         }
-
         /**
          * Output 
         */
