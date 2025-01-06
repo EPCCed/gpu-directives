@@ -30,6 +30,7 @@ struct timer
     auto get_name() const {return _name;}
     auto get_niterations() const {return _niterations;}
 
+
     private:
     std::string _name;
     double _start;
@@ -44,7 +45,7 @@ std::ostream& operator<<(std::ostream & os, const timer & t)
     os << t.get_name() << ": ";
     if (t.get_niterations() > 1) 
     {
-        os << t.get_time()*1000./t.get_niterations() << " micros/it"  ;
+        os << t.get_time()*1000./t.get_niterations() << " ms/it"  ;
     }
     else
     {
@@ -53,6 +54,7 @@ std::ostream& operator<<(std::ostream & os, const timer & t)
 
     return os;
 }
+
 
 struct grid
 {
@@ -74,48 +76,114 @@ struct grid
     double end[2];
 };
 
-
-grid make_grid(const double start[2],const double end[2], size_t n[2]  )
+grid * make_grid(const double start[2],const double end[2], size_t n[2]  )
 {
-    struct grid new_grid;
-    new_grid.start[0]=start[0];
-    new_grid.start[1]=start[1];
+    auto new_grid= new grid;
+    new_grid->start[0]=start[0];
+    new_grid->start[1]=start[1];
 
-    new_grid.end[0]=end[0];
-    new_grid.end[1]=end[1];
+    new_grid->end[0]=end[0];
+    new_grid->end[1]=end[1];
 
-    new_grid.n[0]=n[0];
-    new_grid.n[1]=n[1];
+    new_grid->n[0]=n[0];
+    new_grid->n[1]=n[1];
 
-    new_grid.dx[0]=(new_grid.end[0] - new_grid.start[0])/n[0];
-    new_grid.dx[1]=(new_grid.end[1] - new_grid.start[1])/n[1];
+    new_grid->dx[0]=(new_grid->end[0] - new_grid->start[0])/n[0];
+    new_grid->dx[1]=(new_grid->end[1] - new_grid->start[1])/n[1];
 
     return new_grid;
 }
 
 
+struct field
+{
+
+    field(grid * grid_)
+    {
+        grid= grid_; 
+        data= new double[grid->size()]{0};
+    }
+
+    auto get_data() {return data;}
+    const auto get_data() const  {return data;}
+    
+    auto get_grid() {return grid;}
+    const auto get_grid() const {return grid;}
+
+    private:
+
+    double * data;
+    grid * grid;
+
+};
+
+
+/**
+ * Applies Drichlet boundary conditions.
+ * @param value Value to be set on all ghost cells
+ * @param g Grid definition the space discretization of a field
+ * @param field An array of double containing the field values
+*/
+void apply_drichlet_bc(double * field, const grid * g, double value)
+{
+
+    for(int i=0;i< g->n[0];i++)
+        {
+            auto k_ghost_left = g->get_index(i,-1);
+            auto k_ghost_right = g->get_index(i,g->n[1] );
+
+            field[ k_ghost_left ] = value;
+            field[ k_ghost_right ] = value;            
+        }
+   
+
+   for(int j=0;j<g->n[1];j++)
+    {
+             auto k_ghost_top = g->get_index(-1,j);
+             auto k_ghost_bottom = g->get_index(g->n[0],j );
+
+             field[ k_ghost_bottom ] = value;
+             field[ k_ghost_top ] = value; 
+    }
+
+
+}
+
+
+
+
 /**
  * Makes a step of the jacobi interaction. Compute the new field, given the hold field and the know densitiy field.
-*/ 
-void compute_jacobi(double * phi_new, const double * phi_old, const double * rho, const grid * g)
+*/
+
+void compute_jacobi(field ** phi_new, field ** phi_old, field ** rho, int nFields)
 {
-    auto nx = g->n[0];
-    auto ny = g->n[1];
 
-    auto dx = g->dx[0];
-    auto dy = g->dx[1];
-    double aspect2 = (dy/dx)*(dy/dx);
-    
-    // interior
-    //#pragma omp target teams distribute parallel for collapse(2)
-    for(int i=0;i<nx;i++)
-        for( int j=0;j<ny;j++)
-        {
+    for(int iField=0 ; iField < nFields ; iField++ )
+    {
+        auto g = phi_new[iField]->get_grid();
+        auto field_phi_new=phi_new[iField]->get_data();
+        auto field_phi_old=phi_old[iField]->get_data();
+        auto field_rho=rho[iField]->get_data();
 
-            auto k = g->get_index(i,j);
+        auto nx = g->n[0];
+        auto ny = g->n[1];
 
-            phi_new[ k ] = 0.5*( (phi_old[k - 1] +  phi_old[k + 1 ])/(1 + 1./aspect2) + (phi_old[k - (ny+2) ] +  phi_old[(k + ny+2) ])/(1 + aspect2) - rho[k] * dx*dx/( 1 + aspect2   ) );
-        }
+        auto dx = g->dx[0];
+        auto dy = g->dx[1];
+        double aspect2 = (dy/dx)*(dy/dx);
+
+
+        for(int i=0; i<nx ; i++)
+            for( int j=0; j<ny ; j++)
+            {
+
+                auto k = g->get_index(i,j);
+
+                field_phi_new[ k ] = 0.5*( (field_phi_old[k - 1] +  field_phi_old[k + 1 ])/(1 + 1./aspect2) + (field_phi_old[k - (ny+2) ] +  field_phi_old[(k + ny+2) ])/(1 + aspect2) - field_rho[k] * dx*dx/( 1 + aspect2   ) );
+            }
+    }
+
 };
 
 
@@ -124,16 +192,17 @@ void compute_jacobi(double * phi_new, const double * phi_old, const double * rho
  * Initialise the file field with a isotropic gaussian
  */
 
-void init_gaussian(double alpha, double * field, const grid * g)
+void init_gaussian(double alpha, double * field, const grid * g,double A=1)
 {
     for(int i=0;i<g->n[0];i++)
         for( int j=0;j<g->n[1];j++)
         {
             double r2=g->x(i)* g->x(i) + g->y(j)*g->y(j);
             size_t k = g->get_index(i,j);
-            field[ k  ] = std::exp( - alpha* r2 );
+            field[ k  ] = A*std::exp( - alpha* r2 );
         }
 };
+
 /**
  * Applies periodic boundary condition by filling ghost cells
 */
@@ -159,16 +228,13 @@ void apply_periodic_bc(double * field, const grid * g)
              auto k_ghost_top = g->get_index(-1,j);
              auto k_ghost_bottom = g->get_index(g->n[0],j );
              auto k_top = g->get_index(0,j);
-             auto k_bottom = g->get_index(g->n[0]-1,j );
-             
+             auto k_bottom = g->get_index(g->n[0]-1,j );            
 
              field[ k_ghost_bottom ] = field[k_top];
              field[ k_ghost_top ] = field[k_bottom];
              
     }
 }
-
-
 
 /**
  * Initialize the field with a constant
@@ -232,14 +298,14 @@ double get_norm(const double * field, const grid * g)
     return norm;
 }
 
-
-
 int main(int argc, char ** argv)
 {
-    size_t nx = 500;
-    size_t ny= 500;
 
+    size_t nx = 100;
+    size_t ny= 100;
+    int nFields=1;
     int niterations = 10000;
+    int nIterationsOutput = niterations/10;
 
     double left_box[2]= {-1,-1};
     double right_box[2]= {1,1};
@@ -247,27 +313,39 @@ int main(int argc, char ** argv)
 
     auto current_grid = make_grid(left_box,right_box,shape);
 
-    auto grid_size = (nx + 2)* (ny + 2);
+    auto grid_size = current_grid->size();
 
-    double * rho = new double[grid_size];
-    double * phi1 = new double[grid_size];
-    double * phi2 = new double [grid_size];
+    field ** rho = new field*[nFields];
+    field ** phi1 = new field*[nFields];
+    field ** phi2 = new field*[nFields];
 
-    double * phi_old;
-    double * phi_new;
+    std::cout << "Initialise" << std::endl;
 
-    init_laplacian_gaussian(10.0 ,rho,&current_grid);
-    print_to_file(rho,&current_grid,"rho.dat");
+    for (int iField=0 ; iField < nFields; iField++ )
+    {
+        
+        rho[iField] = new field {current_grid};
+        phi1[iField] = new field {current_grid};
+        phi2[iField] = new field {current_grid};
 
-    init_constant(1.0,phi1,&current_grid);
-    init_constant(0.0,phi2,&current_grid);
-    
+        init_laplacian_gaussian( 10.0 ,rho[iField]->get_data(), current_grid );
+        init_gaussian( 20 ,phi1[iField]->get_data(), current_grid, 0.5 );
+        init_gaussian( 20 ,phi2[iField]->get_data(), current_grid, 0.5 );
 
-    
+        apply_drichlet_bc(rho[iField]->get_data(), current_grid, 0);
+        apply_drichlet_bc(phi1[iField]->get_data(), current_grid, 0);
+        apply_drichlet_bc(phi2[iField]->get_data(), current_grid, 0);
+
+        print_to_file( rho[iField]->get_data(), current_grid, "rho" + std::to_string(iField) + ".dat" );
+        print_to_file( phi1[iField]->get_data(), current_grid, "phi_initial" + std::to_string(iField) + ".dat" );
+
+    }
+
+    field** phi_old;
+    field** phi_new;
 
     phi_new = phi1;
     phi_old = phi2;
-
 
     timer compute_jacobi_timer("compute_jacobi");
     timer apply_periodic_bc_timer("apply_periodic_pbc");
@@ -276,35 +354,34 @@ int main(int argc, char ** argv)
 
     total_time_timer.start();
 
+    std::cout << "Start iterations" << std::endl;
+    int i=0;
 
-    //#pragma omp target data map(tofrom:phi_new[0:(nx+2)*(ny+2)],phi_old[0:(nx+2)*(ny+2)], rho[0:(nx+2)*(ny+2)],current_grid,current_grid.n[0:2],current_grid.dx[0:2],current_grid.start[0:2],current_grid.end[0:2])
+    while(i<niterations)
     {
-        apply_periodic_bc(rho, &current_grid);
-        apply_periodic_bc(phi_new, &current_grid);
-        apply_periodic_bc(phi_old, &current_grid);
 
-        for (int i=0;i<niterations;i++)
+        for (int iBlock=0;iBlock<nIterationsOutput;iBlock++)
         {
             std::swap(phi_new,phi_old);
             compute_jacobi_timer.start();
-            compute_jacobi(phi_new,phi_old,rho,&current_grid);
+            compute_jacobi(phi_new,phi_old,rho,nFields);
             compute_jacobi_timer.stop();
-
-            apply_periodic_bc_timer.start();
-            apply_periodic_bc(phi_new, &current_grid);
-            apply_periodic_bc_timer.stop();
+            i++;
 
         }
-        
-        total_time_timer.stop();
+
+        for(int iField=0;iField<nFields;iField++)
+        {
+            print_to_file(phi_new[iField]->get_data(),current_grid,"phi" + std::to_string(iField) + "_" + std::to_string(i) + ".dat" );
+        }
 
     }
 
+    total_time_timer.stop();
 
-    print_to_file(phi2,&current_grid,"phi.dat");
+    std::cout << "Finalize" << std::endl;
 
     std::cout << total_time_timer << std::endl;
     std::cout << compute_jacobi_timer << std::endl;
     std::cout << apply_periodic_bc_timer << std::endl;
-    
 }
