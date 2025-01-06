@@ -56,7 +56,7 @@ std::ostream& operator<<(std::ostream & os, const timer & t)
 }
 
 
-struct grid
+struct grid_t
 {
     /**
      * Returns the index of the location in memory associated with cell (i,j) .
@@ -76,32 +76,34 @@ struct grid
     double end[2];
 };
 
-grid * make_grid(const double start[2],const double end[2], size_t n[2]  )
+grid_t make_grid(const double start[2],const double end[2], size_t n[2]  )
 {
-    auto new_grid= new grid;
-    new_grid->start[0]=start[0];
-    new_grid->start[1]=start[1];
+    grid_t new_grid;
 
-    new_grid->end[0]=end[0];
-    new_grid->end[1]=end[1];
+    new_grid.start[0]=start[0];
+    new_grid.start[1]=start[1];
 
-    new_grid->n[0]=n[0];
-    new_grid->n[1]=n[1];
+    new_grid.end[0]=end[0];
+    new_grid.end[1]=end[1];
 
-    new_grid->dx[0]=(new_grid->end[0] - new_grid->start[0])/n[0];
-    new_grid->dx[1]=(new_grid->end[1] - new_grid->start[1])/n[1];
+    new_grid.n[0]=n[0];
+    new_grid.n[1]=n[1];
+
+    new_grid.dx[0]=(new_grid.end[0] - new_grid.start[0])/n[0];
+    new_grid.dx[1]=(new_grid.end[1] - new_grid.start[1])/n[1];
 
     return new_grid;
 }
 
 
-struct field
+struct field_t
 {
 
-    field(grid * grid_)
+    void init(grid_t * grid_)
     {
-        grid= grid_; 
+        grid=grid_;
         data= new double[grid->size()]{0};
+
     }
 
     auto get_data() {return data;}
@@ -113,7 +115,7 @@ struct field
     private:
 
     double * data;
-    grid * grid;
+    grid_t * grid;
 
 };
 
@@ -124,7 +126,7 @@ struct field
  * @param g Grid definition the space discretization of a field
  * @param field An array of double containing the field values
 */
-void apply_drichlet_bc(double * field, const grid * g, double value)
+void apply_drichlet_bc(double * field, const grid_t * g, double value)
 {
 
     for(int i=0;i< g->n[0];i++)
@@ -156,15 +158,15 @@ void apply_drichlet_bc(double * field, const grid * g, double value)
  * Makes a step of the jacobi interaction. Compute the new field, given the hold field and the know densitiy field.
 */
 
-void compute_jacobi(field ** phi_new, field ** phi_old, field ** rho, int nFields)
+void compute_jacobi(field_t * phi_new, field_t * phi_old, field_t * rho, int nFields)
 {
 
     for(int iField=0 ; iField < nFields ; iField++ )
     {
-        auto g = phi_new[iField]->get_grid();
-        auto field_phi_new=phi_new[iField]->get_data();
-        auto field_phi_old=phi_old[iField]->get_data();
-        auto field_rho=rho[iField]->get_data();
+        auto g = phi_new[iField].get_grid();
+        auto field_phi_new=phi_new[iField].get_data();
+        auto field_phi_old=phi_old[iField].get_data();
+        auto field_rho=rho[iField].get_data();
 
         auto nx = g->n[0];
         auto ny = g->n[1];
@@ -189,24 +191,27 @@ void compute_jacobi(field ** phi_new, field ** phi_old, field ** rho, int nField
 
 /**
  * 
- * Initialise the file field with a isotropic gaussian
+ * Initialise the file field with a isotropic gaussian A*exp(-alpha*(x**2 + y**2))
+ * @param alpha Width of the gaussian
+ * @param field Pointer to field object
+ * @param A Gaussian amplitude
  */
-
-void init_gaussian(double alpha, double * field, const grid * g,double A=1)
+void init_gaussian(double alpha, double  * data, grid_t * g,double A=1)
 {
+
     for(int i=0;i<g->n[0];i++)
         for( int j=0;j<g->n[1];j++)
         {
             double r2=g->x(i)* g->x(i) + g->y(j)*g->y(j);
             size_t k = g->get_index(i,j);
-            field[ k  ] = A*std::exp( - alpha* r2 );
+            data[ k  ] = A*std::exp( - alpha* r2 );
         }
 };
 
 /**
  * Applies periodic boundary condition by filling ghost cells
 */
-void apply_periodic_bc(double * field, const grid * g)
+void apply_periodic_bc(double * field, const grid_t * g)
 {
     //#pragma omp target teams distribute parallel for
     for(int i=0;i< g->n[0];i++)
@@ -238,8 +243,9 @@ void apply_periodic_bc(double * field, const grid * g)
 
 /**
  * Initialize the field with a constant
+ * 
 */
-void init_constant(double alpha, double * field, const grid * g)
+void init_constant(double alpha, double * field, const grid_t * g)
 {
     for(int i=0;i<g->n[0];i++)
         for( int j=0;j<g->n[1];j++)
@@ -254,7 +260,7 @@ void init_constant(double alpha, double * field, const grid * g)
 /**
  * Save the field to a file in binary format
 */
-void print_to_file(const double * field, const grid * g,std::string filename)
+void print_to_file(const double * field, const grid_t * g,std::string filename)
 {
     std::ofstream f;
     size_t nx = g->n[0];
@@ -273,7 +279,7 @@ void print_to_file(const double * field, const grid * g,std::string filename)
 /**
  * Initialise the field with the laplacian of a gaussian. Mostly meant for testing.
 */
-void init_laplacian_gaussian(double alpha, double * field, const grid * g)
+void init_laplacian_gaussian(double alpha, double * field, const grid_t * g)
 {
 
     for(int i=0;i<g->n[0];i++)
@@ -286,7 +292,7 @@ void init_laplacian_gaussian(double alpha, double * field, const grid * g)
 
 }
 
-double get_norm(const double * field, const grid * g)
+double get_norm(const double * field, const grid_t * g)
 {
     double norm=0;
     for(int i=0;i<g->n[0];i++)
@@ -301,48 +307,46 @@ double get_norm(const double * field, const grid * g)
 int main(int argc, char ** argv)
 {
 
-    size_t nx = 100;
-    size_t ny= 100;
-    int nFields=1;
-    int niterations = 10000;
-    int nIterationsOutput = niterations/10;
+    int nFields=1; // number of equations to solve
+    int niterations = 10000;  // number of time steps
+    int nIterationsOutput = niterations/10; // Number of iterations between successive outputs
 
-    double left_box[2]= {-1,-1};
-    double right_box[2]= {1,1};
-    size_t shape[2] = {nx,ny};
+    double left_box[2]= {-1,-1}; // Coordinate of the bottom left corner
+    double right_box[2]= {1,1}; // Cooridinat of the top right corner
+    size_t shape[2] = {100, 100 }; // Grid shape
+
+
+    std::cout << "Initialise" << std::endl;
 
     auto current_grid = make_grid(left_box,right_box,shape);
 
-    auto grid_size = current_grid->size();
-
-    field ** rho = new field*[nFields];
-    field ** phi1 = new field*[nFields];
-    field ** phi2 = new field*[nFields];
-
-    std::cout << "Initialise" << std::endl;
+    field_t * rho = new field_t[nFields];
+    field_t * phi1 = new field_t[nFields];
+    field_t * phi2 = new field_t[nFields];
 
     for (int iField=0 ; iField < nFields; iField++ )
     {
         
-        rho[iField] = new field {current_grid};
-        phi1[iField] = new field {current_grid};
-        phi2[iField] = new field {current_grid};
+        rho[iField].init( &current_grid);
+        phi1[iField].init( &current_grid);
+        phi2[iField].init(&current_grid);
 
-        init_laplacian_gaussian( 10.0 ,rho[iField]->get_data(), current_grid );
-        init_gaussian( 20 ,phi1[iField]->get_data(), current_grid, 0.5 );
-        init_gaussian( 20 ,phi2[iField]->get_data(), current_grid, 0.5 );
 
-        apply_drichlet_bc(rho[iField]->get_data(), current_grid, 0);
-        apply_drichlet_bc(phi1[iField]->get_data(), current_grid, 0);
-        apply_drichlet_bc(phi2[iField]->get_data(), current_grid, 0);
+        init_laplacian_gaussian( 10.0 ,rho[iField].get_data(), &current_grid );
+        init_gaussian( 20 ,phi1[iField].get_data(),&current_grid, 0.5 );
+        init_gaussian( 20 ,phi2[iField].get_data(),&current_grid, 0.5 );
 
-        print_to_file( rho[iField]->get_data(), current_grid, "rho" + std::to_string(iField) + ".dat" );
-        print_to_file( phi1[iField]->get_data(), current_grid, "phi_initial" + std::to_string(iField) + ".dat" );
+        apply_drichlet_bc(rho[iField].get_data(), &current_grid, 0);
+        apply_drichlet_bc(phi1[iField].get_data(), &current_grid, 0);
+        apply_drichlet_bc(phi2[iField].get_data(), &current_grid, 0);
+        
+        print_to_file( rho[iField].get_data(), &current_grid, "rho" + std::to_string(iField) + ".dat" );
+        print_to_file( phi1[iField].get_data(), &current_grid, "phi_initial" + std::to_string(iField) + ".dat" );
 
     }
 
-    field** phi_old;
-    field** phi_new;
+    field_t * phi_old;
+    field_t * phi_new;
 
     phi_new = phi1;
     phi_old = phi2;
@@ -360,7 +364,10 @@ int main(int argc, char ** argv)
     while(i<niterations)
     {
 
-        for (int iBlock=0;iBlock<nIterationsOutput;iBlock++)
+        /**
+         * Calculations 
+        */
+        for (int iBlock=0;(iBlock<nIterationsOutput) and (i<niterations);iBlock++)
         {
             std::swap(phi_new,phi_old);
             compute_jacobi_timer.start();
@@ -370,9 +377,12 @@ int main(int argc, char ** argv)
 
         }
 
+        /**
+         * Output 
+        */
         for(int iField=0;iField<nFields;iField++)
         {
-            print_to_file(phi_new[iField]->get_data(),current_grid,"phi" + std::to_string(iField) + "_" + std::to_string(i) + ".dat" );
+            print_to_file(phi_new[iField].get_data(),&current_grid,"phi" + std::to_string(iField) + "_" + std::to_string(i) + ".dat" );
         }
 
     }
