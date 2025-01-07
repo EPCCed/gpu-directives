@@ -83,7 +83,7 @@ int main(int argc, char ** argv)
 
     #pragma omp target data map(tofrom:A[0:K*N],B[0:N*M],C[0:K*M])
     {
-        #pragma omp target data use_device_addr(A[:K*N],B[:K*N],C[:K*N])
+        #pragma omp target data use_device_addr(A[0:K*N],B[0:N*M],C[0:K*M])
         {
             for(int i=0;i<nTrials;i++)
             {
