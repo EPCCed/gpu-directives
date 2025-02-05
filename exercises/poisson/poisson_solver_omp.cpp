@@ -97,12 +97,15 @@ struct field_t
     auto get_grid() {return grid;}
     const auto get_grid() const {return grid;}
 
-
     double * data;
     grid_t * grid;
 
 };
 
+#pragma omp declare mapper(grid_t g) map(g,g.n[0:2], g.dx[0:2],g.start[0:2],g.end[0:2]  )
+
+//#pragma omp declare mapper(field_t f) map(f,f.data[0:f.get_grid()->size()], *f.grid  )
+#pragma omp declare mapper(field_t f) map(f,f.data[0:f.get_grid()->size()] )
 
 /**
  * Applies Drichlet boundary conditions.
@@ -167,18 +170,21 @@ void compute_jacobi(field_t * phi_new, field_t * phi_old, field_t * rho, int nFi
 
     for(int iField=0 ; iField < nFields ; iField++ )
     {
+        auto g = phi_new[iField].get_grid();
+        
         auto field_phi_new=phi_new[iField].get_data();
         auto field_phi_old=phi_old[iField].get_data();
         auto field_rho=rho[iField].get_data();
-        auto g = phi_new[iField].get_grid();
 
         //#pragma omp target data map(tofrom:field_phi_new[0:g->size()],field_phi_old[0:g->size()],*g,g->n[0:2],g->dx[0:2],field_rho[0:g->size()])
+        //#pragma omp target data map(tofrom:*phi_new,*phi_old,*field_rho,*g)
         {
             #pragma omp target teams distribute parallel for collapse(2)
             for(int i=0; i<g->n[0] ; i++)
                 for( int j=0; j<g->n[1] ; j++)
                 {
 
+                
                     auto k = g->get_index(i,j);
 
                     auto nx = g->n[0];
@@ -187,7 +193,9 @@ void compute_jacobi(field_t * phi_new, field_t * phi_old, field_t * rho, int nFi
                     auto dx = g->dx[0];
                     auto dy = g->dx[1];
                     double aspect2 = (dy/dx)*(dy/dx);
-                    
+
+                    //field_phi_new[ (j +1) + (i+1)*(100+2) ] = 0.5;
+
                     field_phi_new[ k ] = 0.5*( (field_phi_old[k - 1] +  field_phi_old[k + 1 ])/(1 + 1./aspect2) + (field_phi_old[k - (ny+2) ] +  field_phi_old[(k + ny+2) ])/(1 + aspect2) - field_rho[k] * dx*dx/( 1 + aspect2   ) );
                 }
             }
@@ -215,6 +223,7 @@ void init_gaussian(double alpha, double  * data, grid_t * g,double A=1)
             data[ k  ] = A*std::exp( - alpha* r2 );
         }
 };
+
 
 /**
  * Applies periodic boundary condition by filling ghost cells
@@ -317,17 +326,18 @@ int main(int argc, char ** argv)
 {
     
     int nFields= 1; // number of equations to solve
-    int niterations = 10000;  // number of time steps
-    int nIterationsOutput = niterations/10; // Number of iterations between successive outputs
+    //int niterations = 10000;  // number of time steps
+    int niterations = 10;
+    int nIterationsOutput = niterations/5; // Number of iterations between successive outputs
 
     double left_box[2]= {-1,-1}; // Coordinate of the bottom left corner
     double right_box[2]= {1,1}; // Cooridinat of the top right corner
-    size_t shape[2] = { 100 , 100 }; // Grid shape
+    size_t shape[2] = { 1000 , 1000 }; // Grid shape
 
     std::cout << "Initialise" << std::endl;
 
     auto current_grid = make_grid(left_box,right_box,shape);
-
+    
     field_t * rho = new field_t[nFields];
     field_t * phi1 = new field_t[nFields];
     field_t * phi2 = new field_t[nFields];
@@ -365,7 +375,7 @@ int main(int argc, char ** argv)
 
     total_time_timer.start();
 
-    std::cout << "Start iterations" << std::endl;
+    std::cout << "Start " << niterations << " iterations" << std::endl;
     int i=0;
 
     while( i<niterations )
@@ -375,30 +385,25 @@ int main(int argc, char ** argv)
          * Calculations 
         */
 
-        #pragma omp declare mapper(grid_t g) map(g,g.n[0:2], g.dx[0:2],g.start[0:2],g.end[0:2]  )
-
-        #pragma omp declare mapper(field_t f) map(f,f.data[0:f.get_grid()->size()], *f.grid  )
-
-        #pragma omp target data map(tofrom: phi_new[0:nFields],phi_old[0:nFields],rho[0:nFields])
+        #pragma omp target data map(tofrom: phi_new[0:nFields],phi_old[0:nFields],rho[0:nFields],current_grid)
+        //#pragma omp target data map(tofrom:field_phi->data[0,current_grid.size()],current_grid,current_grid.dx[0:2],current_grid.n[0:2]     )
         {
-                            
-
-            if ( i==0 ) 
-            {
-             
-                std::swap(phi_new,phi_old);
-               
-
-                compute_jacobi(phi_new,phi_old,rho,nFields);
-            }
 
             for (int iBlock=0;(iBlock<nIterationsOutput) and (i<niterations);iBlock++)
             {
-                std::swap(phi_new,phi_old);
                 
                 roctx_range_id_t roctx_jacobi_id = roctxRangeStartA("jacobi");
+
                 compute_jacobi_timer.start();
-                compute_jacobi(phi_new,phi_old,rho,nFields);
+                if (iBlock %2 == 0) 
+                    {
+                        compute_jacobi(phi_new,phi_old,rho,nFields);
+                    }
+                else 
+                    {
+                        compute_jacobi(phi_old,phi_new,rho,nFields);
+                    }
+                    
                 compute_jacobi_timer.stop();
                 roctxRangeStop(roctx_jacobi_id);
 
