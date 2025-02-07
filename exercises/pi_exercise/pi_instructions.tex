@@ -1,0 +1,74 @@
+\documentclass{article}
+\usepackage{graphicx} % required for inserting images
+\usepackage{listings}
+\usepackage{todonotes}
+
+\title{GPU Programming with Directives Exercise \\\ Approximating Pi}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+The purpose of this exercise is to investigate the performance of a piece of code with GPU offloading. The provided code uses a \texttt{for}/\texttt{do} loop to mathematically approximate the value of pi. It then prints out the approximated value, as well as the time taken for the approximation. 
+ 
+% applying a simple midpoint quadrature rule to the identity \(pi/4 = arctan(1)\), using the fact that the derivative of \(arctan(x)\) is \(1/(1 + x ^ 2)\).
+
+
+\section{Connecting to ARCHER2}
+
+Log on to ARCHER2: \texttt{ssh username@login.archer2.ac.uk}. 
+
+\noindent Note: for this exercise, it is important to use the work file system, 
+
+\noindent i.e. \texttt{/work/project/project/username}, and not the home file system.
+
+
+
+\section{Compiling and Running}
+
+The code is contained in \texttt{pi.tar}. The tar file can be fetched from GitHub by cloning the course repository with the following command:
+
+\texttt{git clone ...} \\
+
+\noindent Alternatively, the file can be found on ARCHER2 and copied into your \texttt{/work/} directory with the command:
+
+\texttt{cp ...} \\
+
+\noindent Unpack the file with the command: \texttt{tar -xvf pi.tar}. There are equivalent C and Fortran versions available in \texttt{pi/C} and \texttt{pi/Fortran}, respectively.\\
+
+\noindent Since this exercise will involve offloading to GPUs with OpenMP directives, certain modules must be loaded prior to compiling the code: \\
+
+\texttt{module load PrgEnv-amd} \\
+\indent \texttt{module load rocm} \\
+\indent \texttt{module load craype-accel-amd-gfx90a} \\
+\indent \texttt{module load craype-x86-milan} 
+
+\noindent Makefiles are provided to assist with compilation. In order to compile the code, simply run \texttt{make}, and to remove the generated executable, run \texttt{make clean}. \\
+
+\noindent Slurm scripts are also provided and should be submitted with the command \texttt{sbatch jobscript.slurm}. Before the first submission, the script must be edited to include the correct budget code, which is the project code for the course, e.g. \texttt{ta123}. 
+
+% TODO: reservation
+
+\section{Offloading}
+
+Begin by compiling and running the code. Initially, it will only run on the CPU since the directives used to offload the code to the GPU have not been added yet. \\
+
+\noindent Then, experiment with the following:
+
+% Experiment with offloading the loop to the GPU with the various constructs, including:
+
+
+\begin{itemize}
+    \item offload the loop to the GPU with the \texttt{target} construct. Ensure that data is properly mapped to and from the GPU with the \texttt{map} clause. Futhermore, remember that the code inside the target region will execute sequentially.
+    \item create teams and distribute the iterations of the loop across them with the \texttt{target teams distribute} construct. Experiment with the number of teams with the \texttt{num\_teams} clause.
+    \item add a parallel worksharing loop construct with the \texttt{target teams distribute parallel for/do} construct. Experiment with the number of iterations per chunk with the \texttt{dist\_schedule} clause.
+\end{itemize}
+
+
+\end{document}
+
+
