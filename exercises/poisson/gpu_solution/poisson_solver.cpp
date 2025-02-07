@@ -14,6 +14,22 @@
 #include "jacobi.h"
 #include "tools.h"
 
+#pragma omp declare mapper(grid_t g) map(g,g.n[0:2], g.dx[0:2],g.start[0:2],g.end[0:2]  )
+
+#pragma omp declare mapper(field_t f) map(f,f.data[0:f.get_grid()->size()] )
+
+
+
+
+
+
+
+
+
+
+
+
+
 int main(int argc, char ** argv)
 {
     
@@ -25,7 +41,8 @@ int main(int argc, char ** argv)
     double left_box[2]= {-1,-1}; // Coordinate of the bottom left corner
     double right_box[2]= {1,1}; // Cooridinat of the top right corner
     size_t shape[2] = { 10000 , 10000 }; // Grid shape
-    
+
+
     /**
      * Initialization
     */
@@ -65,6 +82,7 @@ int main(int argc, char ** argv)
     phi_old = phi2;
 
     timer compute_jacobi_timer("compute_jacobi");
+    timer apply_periodic_bc_timer("apply_periodic_pbc");
     timer total_time_timer("total_time");
     
 
@@ -81,6 +99,7 @@ int main(int argc, char ** argv)
          * Calculations 
         */
 
+        #pragma omp target data map(tofrom: phi_new[0:nFields],phi_old[0:nFields],rho[0:nFields],current_grid)
         {
             for (int iBlock=0;(iBlock<nIterationsOutput) and (i<niterations);iBlock++)
             {
@@ -124,6 +143,7 @@ int main(int argc, char ** argv)
 
     std::cout << total_time_timer << std::endl;
     std::cout << compute_jacobi_timer << std::endl;
+    std::cout << apply_periodic_bc_timer << std::endl;
 
     
 }

@@ -15,6 +15,7 @@ void compute_jacobi(field_t * phi_new, field_t * phi_old, field_t * rho, int nFi
         auto field_rho=rho[iField].get_data();
         
         {
+            #pragma omp target teams distribute parallel for collapse(2)
             for(int i=0; i<g->n[0] ; i++)
                 for( int j=0; j<g->n[1] ; j++)
                 {

@@ -15,7 +15,7 @@ TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)
 
 ROCM ?= true
 
-OBJ :=	poisson_solver_omp.o timer.o grid.o bc.o jacobi.o
+OBJ :=	poisson_solver.o timer.o grid.o bc.o jacobi.o
 
 OMP_KERENL := jacobi.o 
 HIP_KERNEL := jacobi_kernel.hip.o

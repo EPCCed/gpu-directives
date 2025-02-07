@@ -16,6 +16,7 @@ void compute_jacobi(field_t * phi_new, field_t * phi_old, field_t * rho, int nFi
         dim3 blockSize(8,8,1);
         dim3 gridSize((nx+1)/8,(ny+1)/8,1);
         
+        #pragma omp target data use_device_addr(field_phi_new[0:1],field_phi_old[0:1],field_rho[0:1],g[0:1])
         {
             launch_compute_jacobi_hip(field_phi_new,field_phi_old,field_rho,g,nx,ny);
         }

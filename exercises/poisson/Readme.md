@@ -30,7 +30,8 @@ sbatch submit.sh
 
 ## Exercises
 
--   The Jacobi iteration is implemented in the `compute_jacobi` function.
-    Offload the main lood to the divice using openmp offloading. Make sure to map all the required variables to the device.
+-   The Jacobi iteration is implemented in the `compute_jacobi` function, in the `jacobi.cpp`.
+    Offload the main loop to the divice using openmp offloading. Make sure to map all the required variables to the device.
+    You can check the correctness of the solution by using the command `python3 check_output.py --compare <old_cpu_solution_file> <new_cpu_solution_file> `. This command should return 0 ( within machine precision) .
 -   Try to use a custom mapper to offload the whole grid object to the device.
--   The file `jacobi_hip.cpp` contains an alternative implementation of the jacobi kernel using hip. You cun use this implmentation by compiling with `make poisson_rocm` The hip kernel is submitted by the launch_compute_jacobi_hip and expects device adresses as argument, not host addresses. Use openmp directives to pass the correct device adresses to the function.
+-   The file `jacobi_hip.cpp` contains an alternative implementation of the jacobi kernel using hip. You cun use this implmentation by compiling with `make clean; make poisson_rocm` The hip kernel is submitted by the launch_compute_jacobi_hip and expects device adresses as argument, not host addresses. Use openmp directives to pass the correct device adresses to the function.
