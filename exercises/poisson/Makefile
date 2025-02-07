@@ -1,7 +1,7 @@
 # tool macros
 CXX := CC
 HIPCXX:= hipcc
-CXXFLAGS := -fopenmp -O2 -std=c++17 -D__HIP_PLATFORM_AMD__ 
+CXXFLAGS := -fopenmp -O2 -std=c++17
 
 LFLAGS := -fopenmp -lroctracer64 -lroctx64 -O2
 HIPCXXFLAGS:= -O2 -std=c++17 -x hip -D__HIP_ROCclr__ --rocm-path=${ROCM_PATH} -D__HIP_PLATFORM_AMD__ --offload-arch=gfx90a
@@ -13,12 +13,15 @@ TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)
 
 # src files & obj files
 
-OBJ :=	poisson_solver_omp.o
+ROCM ?= true
 
-HIP_OBJ := jacobi_kernel.hip.o
+OBJ :=	poisson_solver_omp.o timer.o grid.o bc.o jacobi.o
+
+OMP_KERENL := jacobi.o 
+HIP_KERNEL := jacobi_kernel.hip.o
 
 # default rule
-default: all
+default: poisson
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
@@ -26,12 +29,13 @@ default: all
 %.hip.o: %.cpp
 	$(HIPCXX) $(HIPCXXFLAGS) -c -o $@ $<
 
-poisson: $(OBJ) $(HIP_OBJ)
-	$(CXX) $(LFLAGS) $(OBJ) $(HIP_OBJ) -o $@
+poisson: $(OBJ) $(OMP_KERNEL)
+	$(CXX) $(LFLAGS) $(OBJ) $(OMP_KERNEL) -o $@
 
-all: poisson
+poisson_rocm: $(OBJ) $(HIP_KERNEL)
+	$(CXX) $(LFLAGS) $(OBJ) $(HIP_KERNEL) -o $@
 
 .PHONY: clean
 
 clean:
-	rm -f $(OBJ) $(HIP_OBJ)
+	rm -f poisson poisson_rocm $(OBJ) $(OMP_KERENL)  $(HIP_KERENL) 

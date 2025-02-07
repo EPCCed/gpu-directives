@@ -2,6 +2,19 @@
 #define GRID_H
 #include <cstdio>
 
+/**
+ * Defineds a grid structure.
+ * The underlying data structure contains ghost cells and is ordered row-wise.
+ * 
+ * (-1,-1) , (-1,0) ... (-1,n[1])
+ * .                    .
+ * .                    .
+ * .                    .
+ * (n[0] + 1,-1) , ... , (n[0] + 1,n[1])
+ * 
+*/
+
+
 struct grid_t
 {
     /**
@@ -21,5 +34,9 @@ struct grid_t
     double start[2];
     double end[2];
 };
+
+
+grid_t make_grid(const double start[2],const double end[2], size_t n[2]  );
+
 
 #endif

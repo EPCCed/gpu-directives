@@ -30,4 +30,4 @@ sbatch submit.sh
 -   The Jacobi iteration is implemented in the `compute_jacobi` function.
     Offload the main lood to the divice using openmp offloading. Make sure to map all the required variables to the device.
 -   Try to use a custom mapper to offload the whole grid object to the device.
--   The `compute_jacobi_rocm` subroutine links to an hip implementation of the the jacobi kernel. The function `launch_compute_jacobi_hip` is responsible for launching the hip kernel, but it expects as argument variables present on the device. Use openmp directives to make sure that the function receives as argument device address instead of host address.
+-   The file `jacobi_hip.cpp` contains an alternative implementation of the jacobi kernel using hip. You cun use this implmentation by compiling with `make poisson_rocm` The hip kernel is submitted by the launch_compute_jacobi_hip and expects device adresses as argument, not host addresses. Use omp directives to pass the correct device adresses to the function. 
