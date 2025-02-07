@@ -8,16 +8,19 @@ $\phi^{new}_{i,j}= \frac{1}{2} \left( \frac{\phi( i-1,j) + \phi(i+1,j)}{1+\left(
 
 We keep iterating until we converge to an approximate solution of the poissson equation.
 
-## Compiling and running
+## Setup your environment for exercises
 
-The folder contains a CPU implementation described above. 
-First setup your environment
+In the root folder source the correct environment
 
 ```bash
-source ../../env-archer2.sh
+cd ../../
+source env-archer2.sh
 ```
 
-You can compile by typing `make` in this folder.
+## Compiling and running
+
+This folder contains a CPU implementation of the Poisson solver described above. 
+Once you have setup your environment, you can compile by typing `make` in this folder.
 
 You can submit a job to the computing nodes using the `submit.sh` slurm batch job script.
 
@@ -25,9 +28,9 @@ You can submit a job to the computing nodes using the `submit.sh` slurm batch jo
 sbatch submit.sh
 ```
 
-## Exercise
+## Exercises
 
 -   The Jacobi iteration is implemented in the `compute_jacobi` function.
     Offload the main lood to the divice using openmp offloading. Make sure to map all the required variables to the device.
 -   Try to use a custom mapper to offload the whole grid object to the device.
--   The file `jacobi_hip.cpp` contains an alternative implementation of the jacobi kernel using hip. You cun use this implmentation by compiling with `make poisson_rocm` The hip kernel is submitted by the launch_compute_jacobi_hip and expects device adresses as argument, not host addresses. Use omp directives to pass the correct device adresses to the function. 
+-   The file `jacobi_hip.cpp` contains an alternative implementation of the jacobi kernel using hip. You cun use this implmentation by compiling with `make poisson_rocm` The hip kernel is submitted by the launch_compute_jacobi_hip and expects device adresses as argument, not host addresses. Use omp directives to pass the correct device adresses to the function.
