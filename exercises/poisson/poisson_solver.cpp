@@ -19,12 +19,12 @@ int main(int argc, char ** argv)
     
     int nFields= 1; // number of equations to solve
     //int niterations = 10000;  // number of time steps
-    int niterations = 100;
+    int niterations = 100000;
     int nIterationsOutput = niterations/5; // Number of iterations between successive outputs
 
     double left_box[2]= {-1,-1}; // Coordinate of the bottom left corner
     double right_box[2]= {1,1}; // Cooridinat of the top right corner
-    size_t shape[2] = { 10000 , 10000 }; // Grid shape
+    size_t shape[2] = { 500 , 500 }; // Grid shape
     
     /**
      * Initialization
@@ -85,21 +85,14 @@ int main(int argc, char ** argv)
             for (int iBlock=0;(iBlock<nIterationsOutput) and (i<niterations);iBlock++)
             {
 
-                roctx_range_id_t roctx_jacobi_id = roctxRangeStartA("jacobi");
+               std::swap(phi_new,phi_old);
                 
                 compute_jacobi_timer.start();
-                if (iBlock %2 == 0) 
-                    {
-                        compute_jacobi(phi_new,phi_old,rho,nFields);
-                    }
-                else
-                    {
-                        compute_jacobi(phi_old,phi_new,rho,nFields);
-                    }
-                    
-                compute_jacobi_timer.stop();
-                roctxRangeStop(roctx_jacobi_id);
+               
+                compute_jacobi(phi_new,phi_old,rho,nFields);
 
+                compute_jacobi_timer.stop();
+            
                 i++;
 
             }
