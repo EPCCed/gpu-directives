@@ -4,7 +4,6 @@ import matplotlib
 import matplotlib.pylab as plt
 import argparse
 
-matplotlib.use('Qt5Agg')
 
 def get_size(f):
     return struct.unpack('1L', bytearray(f.read(8)))[0]
@@ -28,6 +27,7 @@ def generate_mesh(nx,ny):
 
 
 def make_plot(file):
+    matplotlib.use('Qt5Agg')
     (X,Y),phi=read_field(file)
     r=np.sqrt(X**2 + Y**2)
     plt.plot( r.flatten(),phi.flatten(),"o",label="phi")
