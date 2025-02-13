@@ -37,6 +37,7 @@ The Jacobi iteration is implemented in the `compute_jacobi` function in `jacobi.
 Your task is to offload the main loop to the device using OpenMP offloading, making sure to map all the required variables to the device.
 
 You can check the correctness of your solution by using the following command: 
+
 ```bash 
 python3 check_output.py --compare original_phi0_80000.dat new_phi0_80000.dat
 ```
@@ -49,6 +50,7 @@ python3 check_output.py --compare original_phi0_80000.dat new_phi0_80000.dat
 ### (2) Offload the main loop to the device using OpenMP offloading - hip implementation
 
 The `jacobi_hip.cpp` file contains an alternative implementation of the Jacobi kernel using hip. You cun use this implmentation by compiling with: 
+
 ```bash 
 make clean; make poisson_rocm
 ```
