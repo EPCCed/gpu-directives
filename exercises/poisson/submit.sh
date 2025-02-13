@@ -9,11 +9,11 @@
 #SBATCH --qos=gpu-exc
 
 WORK_DIR=$(pwd)
-
-source ../../env-archer2.sh 
+cd ../../
+source env-archer2.sh 
+cd $WORK_DIR
 
 #export CRAY_ACC_DEBUG=3
 
-cd $WORK_DIR
 
 srun --ntasks=1 --cpus-per-task=1  ./poisson
