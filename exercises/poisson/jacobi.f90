@@ -40,7 +40,7 @@ program jacobi_serial
     nIterations = 100000                ! Number of time steps
     nIterationsOutput = nIterations/5   ! Number of times we output a file
     free_parameter = 0.8_dp             ! Overelaxation factor (must be less than one for overrelaxation)
-    tolerance = 1.0E-8_dp               ! Tolerance to accept convergence
+    tolerance = 1.0E-9_dp               ! Tolerance to accept convergence
     start_time = 0.0_dp 
     finish_time = 0.0_dp
     
@@ -60,7 +60,7 @@ program jacobi_serial
     end do
 
     ! Print an image of the initial conditions
-    call write_to_output(0)
+    call write_to_output(0,Nx,Ny,grid)
     call cpu_time(start_time)
 
     convergence_loop: do k = 1, nIterations 
@@ -82,14 +82,13 @@ program jacobi_serial
     
         ! Periodically write to output 
         if (mod(k,nIterationsOutput).eq.0) then 
-            call write_to_output(k)
+            call write_to_output(k,Nx,Ny,grid)
         end if 
-        
         
         call check_convergence 
         
         if (all_converged) print*, "Converged in", k, "iterations"
-        if (all_converged) call write_to_output(k)
+        if (all_converged) call write_to_output(k,Nx,Ny,grid)
         if (all_converged) exit convergence_loop
     
     end do convergence_loop
@@ -111,67 +110,79 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Subroutine to write to output
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    subroutine write_to_output(k)
-    implicit none 
-    integer :: k
-    character(len=20) :: filename 
-    character(len=24) :: filename_pgm, filename_dat 
-    character(len=5) :: k_str
+    subroutine write_to_output(k,Nx,Ny,grid)
+        implicit none
+        integer, intent(in) :: k, Nx, Ny
+        real(kind=8), intent(in) :: grid(0:Nx+1, 0:Ny+1)  
+        character(len=24) :: filename_dat, filename_pgm 
+        character(len=5)  :: k_str
+        integer :: istat, unit_num
+        integer(kind=8) :: nx_out, ny_out  ! Must match Python expectations
 
-    ! Convert integer k to string
-    write(k_str, '(I0)') k  ! 'I0' format writes integer without leading spaces
+        ! Convert integer k to string
+        write(k_str, '(I0)') k  
 
-    ! Construct the output filenames based on k
-    filename = "phi_" // trim(k_str)
-    ! out_unit = k 
-    filename_pgm = trim(filename) // ".pgm"
-    filename_dat = trim(filename) // ".dat"
-            
-    ! Visualise 2D domain 
-    call create_pgm(Nx,Ny,grid,filename_pgm)
+        ! Construct the output filename
+        filename_dat = "phi_" // trim(k_str) // ".dat"
+        filename_pgm = "phi_" // trim(k_str) // ".pgm"
 
-    open(file=filename_dat,unit=k,status='unknown',iostat=istat)
-    if (istat.ne.0) stop "Error opening write_to_output .dat"
-    write(k,fmt=*,iostat=istat) grid(:,:)
-    if (istat.ne.0) stop "Error writing to write_to_output .dat"
-    close(unit=k,iostat=istat)
-    if (istat.ne.0) stop "Error closing write_to_output .dat"
-    end subroutine write_to_output 
+        ! Visualise output 
+        call create_pgm(Nx,Ny,grid,filename_pgm)
+
+        ! Open binary file with stream access (avoids extra record markers)
+        unit_num = 10  
+        open(unit=unit_num, file=filename_dat, form='unformatted', access='stream', status='unknown', iostat=istat)
+        if (istat /= 0) stop "Error opening write_to_output .dat"
+
+        ! Write Nx and Ny as 8-byte integers (matches Python struct.unpack('1L'))
+        nx_out = Nx
+        ny_out = Ny
+        write(unit_num, iostat=istat) nx_out, ny_out
+        if (istat /= 0) stop "Error writing dimensions to write_to_output .dat"
+
+        ! Write grid data as raw 8-byte floats (double precision)
+        write(unit_num, iostat=istat) grid
+        if (istat /= 0) stop "Error writing grid to write_to_output .dat"
+
+        ! Close the file
+        close(unit=unit_num, iostat=istat)
+        if (istat /= 0) stop "Error closing write_to_output .dat"
+
+    end subroutine write_to_output
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Subroutine to check if the grid has converged
     ! by comparing the previous value point at the current grid point
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        subroutine check_convergence
-            implicit none
-            integer,parameter :: dp = selected_real_kind(15,300)
-            integer :: converged 
-            
-            converged = 0
-            all_converged = .false.
-            ! This is an expensive test
-            do i = 1, Nx
-                do j = 1, Ny
-                    ! Check that each point value is within some tolerance of the previous value of that point
-                    if (abs(grid(i,j)-previous_grid(i,j)) .lt. tolerance) then
-                        ! Add this to a counter which keeps track of how many have converged
-                        converged = converged + 1
-                    end if
-                end do
+    subroutine check_convergence
+        implicit none
+        integer,parameter :: dp = selected_real_kind(15,300)
+        integer :: converged 
+        
+        converged = 0
+        all_converged = .false.
+        ! This is an expensive test
+        do i = 1, Nx
+            do j = 1, Ny
+                ! Check that each point value is within some tolerance of the previous value of that point
+                if (abs(grid(i,j)-previous_grid(i,j)) .lt. tolerance) then
+                    ! Add this to a counter which keeps track of how many have converged
+                    converged = converged + 1
+                end if
             end do
+        end do
 
-            ! If all points within the grid have reported that they have converged then ...
-            if (converged .eq. grid_area) then
-                ! Mark this victory as true
-                all_converged=.true.
-            end if
-        end subroutine check_convergence
+        ! If all points within the grid have reported that they have converged then ...
+        if (converged .eq. grid_area) then
+            ! Mark this victory as true
+            all_converged=.true.
+        end if
+    end subroutine check_convergence
  
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Subroutine to create a 2D plot of the potential
     ! across the grid, outputs image as a .pgm file
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
     subroutine create_pgm(Nx,Ny,array,image_name)
         implicit none
         integer, parameter :: dp = selected_real_kind(15,300)
@@ -191,10 +202,10 @@ contains
         min = minval(array)
 
         do j = 0, Ny+1
-        do i = 0, Nx+1
-            ! min < T < max
-            pixels(i,j) = int((array(i,j)-min)*max_greys/(max-min))
-        end do
+            do i = 0, Nx+1
+                ! min < T < max
+                pixels(i,j) = int((array(i,j)-min)*max_greys/(max-min))
+            end do
         end do
 
         out_unit = 10
@@ -207,9 +218,12 @@ contains
         if (istat.ne.0) stop "Error writing to out_unit 12"
         write(out_unit,13,iostat=istat) max_greys                   ! Max grey value
         if (istat.ne.0) stop "Error writing to out_unit 13"
-        write(out_unit,fmt=*,iostat=istat) pixels(:,:)
-        if (istat.ne.0) stop "Error writing to out_unit 14"
-
+        ! Write pixel data in a safe, formatted way
+        do j = 0, Ny+1
+            write(out_unit,'(1000I5)',iostat=istat) pixels(:, j)
+            if (istat.ne.0) stop "Error writing to out_unit 13"
+        end do
+            
         close(unit=out_unit,iostat=istat)
         if (istat.ne.0) stop "Error closing out_unit"
 
