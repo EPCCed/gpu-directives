@@ -5,14 +5,14 @@ program jacobi_serial
 
     integer :: i, j, k, istat
     integer :: Nx, Ny, Lx, Ly, dx, dy, x1, x2, grid_area
-    integer :: nIterations, nIterationsOutput 
+    integer :: nIterations, nIterationsOutput, nFields, iField
     
     real(kind=dp) :: A, alpha, r2
     real(kind=dp) :: potential, free_parameter, tolerance
-    real(kind=dp), allocatable, dimension(:,:) :: grid, previous_grid, charge_density
+    real(kind=dp), allocatable, dimension(:,:,:) :: grid, previous_grid, charge_density
     
     logical :: all_converged
-    real(kind=dp) :: start_time, finish_time 
+    real(kind=dp) :: start_time, finish_time, start_jacobi_time, finish_jacobi_time, total_jacobi_time  
 
     ! Define grid: 
     Nx = 500                        ! Number of grid points in x
@@ -24,17 +24,16 @@ program jacobi_serial
     grid_area = Nx*Ny        
     x1 = (Nx+1)/2 
     x2 = (Ny+1)/2
+    
+    nFields = 4                     ! Number of field equations to solve
 
-    allocate(grid(0:Nx+1,0:Ny+1),stat=istat)
+    ! Allocate a Nx * Ny grid for each of the field equations
+    allocate(grid(0:Nx+1,0:Ny+1,nFields),stat=istat)
     if (istat.ne.0) stop "Error allocating grid array"
-    allocate(previous_grid(0:Nx+1,0:Ny+1),stat=istat)
+    allocate(previous_grid(0:Nx+1,0:Ny+1,nFields),stat=istat)
     if (istat.ne.0) stop "Error allocating previous_grid array"
-    allocate(charge_density(0:Nx+1,0:Ny+1),stat=istat)
+    allocate(charge_density(0:Nx+1,0:Ny+1,nFields),stat=istat)
     if (istat.ne.0) stop "Error allocating charge_density array"
-
-    grid(:,:) = 0.0_dp 
-    previous_grid(:,:) = 0.0_dp 
-    charge_density(:,:) = 0.0_dp 
 
     ! Simulation parameters: 
     nIterations = 100000                ! Number of time steps
@@ -48,56 +47,77 @@ program jacobi_serial
     A = 0.1_dp                      ! Max value of potential
     alpha = 0.01_dp                 ! Width of gaussian 
 
-    do i = 1, Nx
-        do j = 1, Ny
-            r2 = (real(i-x1, dp)**2 + real(j-x2, dp)**2)
-            ! Initialise the field with either 0 or gaussian -> This helps for a smooth convergence.
-            grid(i,j) = A * exp(-alpha * r2)
-            ! Initialise the charge density with a uniform or gaussian distribution. 
-            charge_density(i,j) = A * (2.0_dp * alpha - 4.0_dp * alpha**2 * r2) * exp(-alpha * r2)
-            ! charge_density(i,j) = 3.0_dp 
-        end do
-    end do
+    print*, "Initialising..."
 
-    ! Print an image of the initial conditions
-    call write_to_output(0,Nx,Ny,grid)
+    do iField = 1, nFields
+        grid(:,:,iField) = 0.0_dp 
+        previous_grid(:,:,iField) = 0.0_dp 
+        charge_density(:,:,iField) = 0.0_dp 
+
+        do i = 1, Nx
+            do j = 1, Ny
+                r2 = (real(i-x1, dp)**2 + real(j-x2, dp)**2)
+                ! Initialise the field with either 0 or gaussian -> This helps for a smooth convergence.
+                grid(i,j,iField) = A * exp(-alpha * r2)
+                ! Initialise the charge density with a uniform or gaussian distribution. 
+                charge_density(i,j,iField) = A * (2.0_dp * alpha - 4.0_dp * alpha**2 * r2) * exp(-alpha * r2)
+                ! charge_density(i,j,iField) = 3.0_dp 
+            end do
+        end do
+
+        ! Output the initial conditions
+        call write_to_output(0,Nx,Ny,grid,iField)
+    end do 
+
     call cpu_time(start_time)
 
-    convergence_loop: do k = 1, nIterations 
-        ! Store the previous grid
-        previous_grid(:,:) = grid(:,:)
+    print*, "Starting calculation..."
 
-        ! Jacobi: 
+    fields_loop: do iField = 1, nFields 
+        total_jacobi_time = 0.0_dp 
 
-        ! The grid is initialised with 0 values. By iterating between 1 and Nx/Ny - 1, we are maintaining a boundary of 0, 
-        ! therefore maintaining Dirichlet boundary conditions. 
-        do j = 2, Nx-1
-            do i = 2, Ny-1  
-                ! Now update the potential value using the nearest neighbours to grid(i,j) and the charge density
-                potential = 0.25_dp*(grid(i+1,j) + grid(i-1,j) + grid(i,j+1) + grid(i,j-1) + (dx**2) * charge_density(i,j))
-                ! Update grid
-                grid(i,j) = grid(i,j) + free_parameter*(potential - grid(i,j))
-            end do 
-        end do     
-    
-        ! Periodically write to output 
-        if (mod(k,nIterationsOutput).eq.0) then 
-            call write_to_output(k,Nx,Ny,grid)
-        end if 
+        convergence_loop: do k = 1, nIterations 
+            ! Store the previous grid
+            previous_grid(:,:,iField) = grid(:,:,iField)
+
+            ! Jacobi: 
+            call cpu_time(start_jacobi_time)
+
+            ! The grid is initialised with 0 values. By iterating between 1 and Nx/Ny - 1, we are maintaining a boundary of 0, 
+            ! therefore maintaining Dirichlet boundary conditions. 
+            do j = 2, Nx-1
+                do i = 2, Ny-1  
+                    ! Now update the potential value using the nearest neighbours to grid(i,j) and the charge density
+                    potential = 0.25_dp*(grid(i+1,j,iField) + grid(i-1,j,iField) + grid(i,j+1,iField) + grid(i,j-1,iField) + (dx**2) * charge_density(i,j,iField))
+                    ! Update grid
+                    grid(i,j,iField) = grid(i,j,iField) + free_parameter*(potential - grid(i,j,iField))
+                end do 
+            end do     
         
-        call check_convergence 
-        
-        if (all_converged) print*, "Converged in", k, "iterations"
-        if (all_converged) call write_to_output(k,Nx,Ny,grid)
-        if (all_converged) exit convergence_loop
-    
-    end do convergence_loop
+            call cpu_time(finish_jacobi_time)
+            total_jacobi_time = total_jacobi_time + (finish_jacobi_time - start_jacobi_time)
 
-    ! Print an image of the final conditions
+            ! Periodically write to output 
+            if (mod(k,nIterationsOutput).eq.0) then 
+                call write_to_output(k,Nx,Ny,grid,iField)
+            end if 
+            
+            call check_convergence 
+            
+            if (all_converged) print*, "Field", iField, "converged in", k, "iterations"
+            if (all_converged) print*, "Average time spent in jacobi:", (total_jacobi_time/k)/1000.0_dp, "ms"
+            if (all_converged) call write_to_output(k,Nx,Ny,grid,iField)
+            if (all_converged) exit convergence_loop
+        end do convergence_loop
+    end do fields_loop
+
     call cpu_time(finish_time)
 
-    print*, "Time to compute:", finish_time-start_time, "s"
-
+    print*, "Finalising..."
+    print*, " "
+    ! print*, "Average time spent in jacobi:", (total_jacobi_time/k)/1000.0_dp, "ms"
+    print*, "Total time to compute", nFields, "fields:", finish_time-start_time, "s"
+    print*, ""
 
     deallocate(grid,stat=istat)
     if (istat.ne.0) stop 'Error deallocating grid array'
@@ -107,49 +127,6 @@ program jacobi_serial
     if (istat.ne.0) stop 'Error deallocating previous_grid array'
   
 contains 
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! Subroutine to write to output
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    subroutine write_to_output(k,Nx,Ny,grid)
-        implicit none
-        integer, intent(in) :: k, Nx, Ny
-        real(kind=8), intent(in) :: grid(0:Nx+1, 0:Ny+1)  
-        character(len=24) :: filename_dat, filename_pgm 
-        character(len=5)  :: k_str
-        integer :: istat, unit_num
-        integer(kind=8) :: nx_out, ny_out  ! Must match Python expectations
-
-        ! Convert integer k to string
-        write(k_str, '(I0)') k  
-
-        ! Construct the output filename
-        filename_dat = "phi_" // trim(k_str) // ".dat"
-        filename_pgm = "phi_" // trim(k_str) // ".pgm"
-
-        ! Visualise output 
-        call create_pgm(Nx,Ny,grid,filename_pgm)
-
-        ! Open binary file with stream access (avoids extra record markers)
-        unit_num = 10  
-        open(unit=unit_num, file=filename_dat, form='unformatted', access='stream', status='unknown', iostat=istat)
-        if (istat /= 0) stop "Error opening write_to_output .dat"
-
-        ! Write Nx and Ny as 8-byte integers (matches Python struct.unpack('1L'))
-        nx_out = Nx
-        ny_out = Ny
-        write(unit_num, iostat=istat) nx_out, ny_out
-        if (istat /= 0) stop "Error writing dimensions to write_to_output .dat"
-
-        ! Write grid data as raw 8-byte floats (double precision)
-        write(unit_num, iostat=istat) grid
-        if (istat /= 0) stop "Error writing grid to write_to_output .dat"
-
-        ! Close the file
-        close(unit=unit_num, iostat=istat)
-        if (istat /= 0) stop "Error closing write_to_output .dat"
-
-    end subroutine write_to_output
-
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Subroutine to check if the grid has converged
     ! by comparing the previous value point at the current grid point
@@ -165,7 +142,7 @@ contains
         do i = 1, Nx
             do j = 1, Ny
                 ! Check that each point value is within some tolerance of the previous value of that point
-                if (abs(grid(i,j)-previous_grid(i,j)) .lt. tolerance) then
+                if (abs(grid(i,j,iField)-previous_grid(i,j,iField)) .lt. tolerance) then
                     ! Add this to a counter which keeps track of how many have converged
                     converged = converged + 1
                 end if
@@ -178,19 +155,63 @@ contains
             all_converged=.true.
         end if
     end subroutine check_convergence
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Subroutine to write to output
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    subroutine write_to_output(k,Nx,Ny,grid,iField)
+        implicit none
+        integer, intent(in) :: k, Nx, Ny, iField
+        real(kind=8), intent(in) :: grid(0:Nx+1, 0:Ny+1, iField)  
+        character(len=64) :: filename_dat, filename_pgm 
+        character(len=5)  :: k_str, iField_str 
+        integer :: istat, unit_num
+        integer(kind=8) :: nx_out, ny_out  ! Must match Python expectations
+
+        ! Convert integer k to string
+        write(k_str, '(I0)') k  
+        write(iField_str, '(I0)') iField  
+
+        ! Construct the output filename
+        filename_dat = "phi_" // trim(k_str) // "_field_" // trim(iField_str) // ".dat"
+        filename_pgm = "phi_" // trim(k_str) // "_field_" // trim(iField_str) // ".pgm"
+    
+        ! Visualise output 
+        call create_pgm(Nx,Ny,grid,filename_pgm,iField)
+
+        ! Open binary file with stream access (avoids extra record markers)
+        unit_num = 10  
+        open(unit=unit_num, file=filename_dat, form='unformatted', access='stream', status='unknown', iostat=istat)
+        if (istat /= 0) stop "Error opening write_to_output .dat"
+
+        ! Write Nx and Ny as 8-byte integers (matches Python struct.unpack('1L'))
+        nx_out = Nx
+        ny_out = Ny
+        write(unit_num, iostat=istat) nx_out, ny_out
+        if (istat /= 0) stop "Error writing dimensions to write_to_output .dat"
+
+        ! Write grid data as raw 8-byte floats (double precision)
+        write(unit_num, iostat=istat) grid(:,:,iField)
+        if (istat /= 0) stop "Error writing grid to write_to_output .dat"
+
+        ! Close the file
+        close(unit=unit_num, iostat=istat)
+        if (istat /= 0) stop "Error closing write_to_output .dat"
+
+    end subroutine write_to_output
  
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Subroutine to create a 2D plot of the potential
     ! across the grid, outputs image as a .pgm file
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    subroutine create_pgm(Nx,Ny,array,image_name)
+    subroutine create_pgm(Nx,Ny,array,image_name,iField)
         implicit none
         integer, parameter :: dp = selected_real_kind(15,300)
         integer, allocatable, dimension(:,:) :: pixels
-        integer :: ierr, max_greys, out_unit, Nx, Ny, i, j
+        integer :: ierr, max_greys, out_unit, Nx, Ny, i, j, iField
         character(len=*) :: image_name
 
-        real(kind=dp), dimension(0:Nx+1,0:Ny+1) :: array
+        real(kind=dp), dimension(0:Nx+1,0:Ny+1,iField) :: array
         real(kind=dp) :: max, min
 
         allocate(pixels(0:Nx+1,0:Ny+1),stat=ierr)
@@ -204,7 +225,7 @@ contains
         do j = 0, Ny+1
             do i = 0, Nx+1
                 ! min < T < max
-                pixels(i,j) = int((array(i,j)-min)*max_greys/(max-min))
+                pixels(i,j) = int((array(i,j,iField)-min)*max_greys/(max-min))
             end do
         end do
 
