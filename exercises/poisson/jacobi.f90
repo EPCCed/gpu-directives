@@ -3,7 +3,7 @@ program jacobi_serial
     implicit none
     integer, parameter :: dp = selected_real_kind(15,300)
 
-    integer :: i, j, k, istat
+    integer :: i, j, k, h, istat
     integer :: Nx, Ny, Lx, Ly, dx, dy, x1, x2, grid_area
     integer :: nIterations, nIterationsOutput, nFields, iField
     
@@ -25,7 +25,7 @@ program jacobi_serial
     x1 = (Nx+1)/2 
     x2 = (Ny+1)/2
     
-    nFields = 4                     ! Number of field equations to solve
+    nFields = 2                     ! Number of field equations to solve
 
     ! Allocate a Nx * Ny grid for each of the field equations
     allocate(grid(0:Nx+1,0:Ny+1,nFields),stat=istat)
@@ -59,6 +59,7 @@ program jacobi_serial
                 r2 = (real(i-x1, dp)**2 + real(j-x2, dp)**2)
                 ! Initialise the field with either 0 or gaussian -> This helps for a smooth convergence.
                 grid(i,j,iField) = A * exp(-alpha * r2)
+                ! grid(i,j,2) = 0.2_dp * exp(-alpha * r2)
                 ! Initialise the charge density with a uniform or gaussian distribution. 
                 charge_density(i,j,iField) = A * (2.0_dp * alpha - 4.0_dp * alpha**2 * r2) * exp(-alpha * r2)
                 ! charge_density(i,j,iField) = 3.0_dp 
@@ -71,53 +72,51 @@ program jacobi_serial
 
     call cpu_time(start_time)
 
-    print*, "Starting calculation..."
-
-    fields_loop: do iField = 1, nFields 
-        total_jacobi_time = 0.0_dp 
-
-        convergence_loop: do k = 1, nIterations 
+    print*, "Starting calculation with", nFields, "fields ..."
+               
+    ! Because we are outputting every nIterationsOutput, we need to do nIterations/nIterationsOutput chunks to complete
+    ! the total number of iterations
+    do k = 1, nIterations/nIterationsOutput
+        output_loop: do h = 1, nIterationsOutput 
             ! Store the previous grid
-            previous_grid(:,:,iField) = grid(:,:,iField)
+            previous_grid(:,:,:) = grid(:,:,:)
 
             ! Jacobi: 
             call cpu_time(start_jacobi_time)
 
             ! The grid is initialised with 0 values. By iterating between 1 and Nx/Ny - 1, we are maintaining a boundary of 0, 
             ! therefore maintaining Dirichlet boundary conditions. 
-            do j = 2, Nx-1
-                do i = 2, Ny-1  
-                    ! Now update the potential value using the nearest neighbours to grid(i,j) and the charge density
-                    potential = 0.25_dp*(grid(i+1,j,iField) + grid(i-1,j,iField) + grid(i,j+1,iField) + grid(i,j-1,iField) + (dx**2) * charge_density(i,j,iField))
-                    ! Update grid
-                    grid(i,j,iField) = grid(i,j,iField) + free_parameter*(potential - grid(i,j,iField))
-                end do 
-            end do     
-        
+
+            !!!!!!!!!!!!!!!!!!!!!!! omp would go round here: 
+
+            do iField = 1, nFields
+                do j = 2, Nx-1
+                    do i = 2, Ny-1  
+                        ! Now update the potential value using the nearest neighbours to grid(i,j) and the charge density
+                        potential = 0.25_dp*(grid(i+1,j,iField) + grid(i-1,j,iField) + grid(i,j+1,iField) + grid(i,j-1,iField) + (dx**2) * charge_density(i,j,iField))
+                        ! Update grid
+                        grid(i,j,iField) = grid(i,j,iField) + free_parameter*(potential - grid(i,j,iField))
+                    end do 
+                end do
+            end do      
+            !!!!!!!!!!!!!!!!!!!!!!!
+            
             call cpu_time(finish_jacobi_time)
             total_jacobi_time = total_jacobi_time + (finish_jacobi_time - start_jacobi_time)
+        end do output_loop
 
-            ! Periodically write to output 
-            if (mod(k,nIterationsOutput).eq.0) then 
-                call write_to_output(k,Nx,Ny,grid,iField)
-            end if 
-            
-            call check_convergence 
-            
-            if (all_converged) print*, "Field", iField, "converged in", k, "iterations"
-            if (all_converged) print*, "Average time spent in jacobi:", (total_jacobi_time/k)/1000.0_dp, "ms"
-            if (all_converged) call write_to_output(k,Nx,Ny,grid,iField)
-            if (all_converged) exit convergence_loop
-        end do convergence_loop
-    end do fields_loop
+        do iField = 1, nFields
+            call write_to_output(k*nIterationsOutput,Nx,Ny,grid,iField)
+        end do 
+    end do 
 
     call cpu_time(finish_time)
 
     print*, "Finalising..."
     print*, " "
-    ! print*, "Average time spent in jacobi:", (total_jacobi_time/k)/1000.0_dp, "ms"
+    print*, "Average time spent in jacobi:", (total_jacobi_time/nIterations)/1000.0_dp, "ms/it"
     print*, "Total time to compute", nFields, "fields:", finish_time-start_time, "s"
-    print*, ""
+    print*, " "
 
     deallocate(grid,stat=istat)
     if (istat.ne.0) stop 'Error deallocating grid array'
@@ -130,31 +129,36 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Subroutine to check if the grid has converged
     ! by comparing the previous value point at the current grid point
+    ! Usage: 
+    !       call check_convergence 
+    !       if (all_converged) print*, "Field", iField, "finished in", k*h, "iterations"
+    !       if (all_converged) call write_to_output(k*h,Nx,Ny,grid,iField)
+    !       if (all_converged) exit output_loop 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    subroutine check_convergence
-        implicit none
-        integer,parameter :: dp = selected_real_kind(15,300)
-        integer :: converged 
+    ! subroutine check_convergence
+    !     implicit none
+    !     integer,parameter :: dp = selected_real_kind(15,300)
+    !     integer :: converged 
         
-        converged = 0
-        all_converged = .false.
-        ! This is an expensive test
-        do i = 1, Nx
-            do j = 1, Ny
-                ! Check that each point value is within some tolerance of the previous value of that point
-                if (abs(grid(i,j,iField)-previous_grid(i,j,iField)) .lt. tolerance) then
-                    ! Add this to a counter which keeps track of how many have converged
-                    converged = converged + 1
-                end if
-            end do
-        end do
+    !     converged = 0
+    !     all_converged = .false.
+    !     ! This is an expensive test
+    !     do i = 1, Nx
+    !         do j = 1, Ny
+    !             ! Check that each point value is within some tolerance of the previous value of that point
+    !             if (abs(grid(i,j,iField)-previous_grid(i,j,iField)) .lt. tolerance) then
+    !                 ! Add this to a counter which keeps track of how many have converged
+    !                 converged = converged + 1
+    !             end if
+    !         end do
+    !     end do
 
-        ! If all points within the grid have reported that they have converged then ...
-        if (converged .eq. grid_area) then
-            ! Mark this victory as true
-            all_converged=.true.
-        end if
-    end subroutine check_convergence
+    !     ! If all points within the grid have reported that they have converged then ...
+    !     if (converged .eq. grid_area) then
+    !         ! Mark this victory as true
+    !         all_converged=.true.
+    !     end if
+    ! end subroutine check_convergence
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Subroutine to write to output
@@ -164,7 +168,7 @@ contains
         integer, intent(in) :: k, Nx, Ny, iField
         real(kind=8), intent(in) :: grid(0:Nx+1, 0:Ny+1, iField)  
         character(len=64) :: filename_dat, filename_pgm 
-        character(len=5)  :: k_str, iField_str 
+        character(len=6)  :: k_str, iField_str 
         integer :: istat, unit_num
         integer(kind=8) :: nx_out, ny_out  ! Must match Python expectations
 
