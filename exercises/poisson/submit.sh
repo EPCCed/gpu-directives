@@ -6,7 +6,7 @@
 #SBATCH --exclusive
 #SBATCH --time=00:05:00
 #SBATCH --partition=gpu
-#SBATCH --qos=gpu-exc
+#SBATCH --qos=gpu-shd
 
 WORK_DIR=$(pwd)
 cd ../../
