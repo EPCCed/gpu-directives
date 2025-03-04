@@ -1,0 +1,57 @@
+\documentclass{article}
+\usepackage{graphicx} % required for inserting images
+\usepackage{listings}
+\usepackage{todonotes}
+
+\title{GPU Programming with Directives Exercise \\\ Approximating Pi with OpenACC}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This exercise involves redoing the \texttt{pi} example with OpenACC instead of OpenMP. 
+
+
+\section{Compiling and Running}
+
+The code is contained in \texttt{openacc\_pi.tar}. The tar file can be fetched from GitHub by cloning the course repository with the following command:
+
+\texttt{git clone ...} \\
+
+\noindent Alternatively, the file can be found on ARCHER2 and copied into your \texttt{/work/} directory with the command:
+
+\texttt{cp ...} \\
+
+\noindent Unpack the file with the command: \texttt{tar -xvf pi.tar}. There is only a Fortran version of this exercise because offloading using OpenACC directives on ARCHER2 is only supported by the Cray Fortran compiler. Therefore, the following modules must be loaded prior to compiling the code: \\
+
+\texttt{module load PrgEnv-cray} \\
+\indent \texttt{module load rocm} \\
+\indent \texttt{module load craype-accel-amd-gfx90a} \\
+\indent \texttt{module load craype-x86-milan} \\  
+
+\noindent Makefiles are provided to assist with compilation. In order to compile the code, simply run \texttt{make}, and to remove the generated object files and executable, run \texttt{make clean}. \\
+
+\noindent Slurm scripts are also provided and should be submitted with the command \texttt{sbatch jobscript.slurm}. Before the first submission, the script must be edited to include the correct budget code, which is the project code for the course, e.g. \texttt{ta123}. 
+
+\section{Offloading}
+
+Begin by compiling and running the code. Initially, it will only run on the CPU since the directives used to offload the code to the GPU have not been added yet. \\
+
+\noindent Then, experiment with the following:
+
+% Experiment with offloading the loop to the GPU with the various constructs, including:
+
+
+\begin{itemize}
+    \item offload the loop to the GPU with the \texttt{parallel} construct. Ensure that data is properly mapped to and from the GPU with clauses such as \texttt{copyin}, \texttt{copyout} and \texttt{copy}. Furthermore, remember that the code inside the \texttt{parallel} construct will be executed by every gang.
+    \item parallelise the \texttt{do} loop at the varying levels using the following clauses: \texttt{loop worker}, \texttt{loop gang}, and \texttt{loop gang worker}. When applicable, experiment with the number of gangs using the \texttt{num\_gang} clause.
+    \item compare the performance of the \texttt{pi} exercise with OpenACC to the \texttt{pi} exercise with OpenMP. However, please note that the \texttt{pi} exercise with OpenMP was compiled with the AMD compiler and the \texttt{pi} exercise with OpenACC was compiled with the Cray compiler. Therefore, for a more fair comparison, the \texttt{pi} exercise with OpenMP should be recompiled with the Cray compiler and then rerun. 
+\end{itemize}
+
+\end{document}
+
+

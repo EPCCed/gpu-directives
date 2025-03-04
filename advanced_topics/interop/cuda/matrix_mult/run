@@ -1,0 +1,5 @@
+./a.out  2>&1 | tee out.log
+
+echo "Verification: "
+
+python verify.py
