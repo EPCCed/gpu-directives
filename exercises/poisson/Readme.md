@@ -28,6 +28,8 @@ You can submit a job to the computing nodes using the `submit.sh` slurm batch jo
 sbatch submit.sh
 ```
 
+Remeber to update the executable in `submit.sh`.
+
 ## Exercises
 
 ### (1) Offload the main loop to the device using OpenMP offloading

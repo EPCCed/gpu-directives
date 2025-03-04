@@ -1,5 +1,6 @@
 # tool macros
 CXX := CC
+F90 := ftn
 HIPCXX:= hipcc
 CXXFLAGS := -fopenmp -O2 -std=c++17
 
@@ -15,13 +16,14 @@ TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)
 
 ROCM ?= true
 
-OBJ :=	poisson_solver.o timer.o grid.o bc.o jacobi.o
+OBJ :=	poisson_solver.o timer.o grid.o bc.o 
+FORTRAN_SRC := jacobi.f90
 
-OMP_KERENL := jacobi.o 
+OMP_KERNEL := jacobi.o 
 HIP_KERNEL := jacobi_kernel.hip.o
 
 # default rule
-default: poisson
+default: poisson_cxx poisson_f90
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
@@ -29,8 +31,11 @@ default: poisson
 %.hip.o: %.cpp
 	$(HIPCXX) $(HIPCXXFLAGS) -c -o $@ $<
 
-poisson: $(OBJ) $(OMP_KERNEL)
+poisson_cxx: $(OBJ) $(OMP_KERNEL)
 	$(CXX) $(LFLAGS) $(OBJ) $(OMP_KERNEL) -o $@
+
+poisson_f90: $(FORTRAN_SRC)
+	$(F90) $(FORTRAN_SRC) -o $@
 
 poisson_rocm: $(OBJ) $(HIP_KERNEL)
 	$(CXX) $(LFLAGS) $(OBJ) $(HIP_KERNEL) -o $@
@@ -38,4 +43,4 @@ poisson_rocm: $(OBJ) $(HIP_KERNEL)
 .PHONY: clean
 
 clean:
-	rm -f poisson poisson_rocm $(OBJ) $(OMP_KERENL)  $(HIP_KERENL) 
+	rm -f poisson_cxx poisson_f90 poisson_rocm $(OBJ) $(OMP_KERNEL) $(HIP_KERNEL) 
