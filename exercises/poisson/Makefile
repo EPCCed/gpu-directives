@@ -15,10 +15,10 @@ TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)
 
 ROCM ?= true
 
-OBJ :=	poisson_solver.o timer.o grid.o bc.o jacobi.o
+OBJ :=	poisson_solver.o timer.o grid.o bc.o
 
-OMP_KERENL := jacobi.o 
-HIP_KERNEL := jacobi_kernel.hip.o
+OMP_KERNEL := jacobi.o
+HIP_KERNEL := jacobi_kernel.hip.o jacobi_hip.o
 
 # default rule
 default: poisson
@@ -38,4 +38,4 @@ poisson_rocm: $(OBJ) $(HIP_KERNEL)
 .PHONY: clean
 
 clean:
-	rm -f poisson poisson_rocm $(OBJ) $(OMP_KERENL)  $(HIP_KERENL) 
+	rm -f poisson poisson_rocm $(OBJ) $(OMP_KERNEL)  $(HIP_KERNEL) 
