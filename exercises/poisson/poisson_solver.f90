@@ -5,9 +5,9 @@ program poisson_solver
     type(grid_t) :: grid
     type(field_t), allocatable :: rho(:), phi1(:), phi2(:)
 
-    integer :: iField, i, j, k, h                       ! Iterators
+    integer :: iField, k, h                             ! Iterators
     integer :: nFields, nIterations, nIterationsOutput  ! Simulation parameters 
-    integer :: Nx, Ny, index, aspect2, istat
+    integer :: Nx, Ny, istat
     integer :: shape(2)                                 ! Grid shape
 
     real(kind=dp) :: left_box(2) = [-1.0_dp, -1.0_dp]   ! Coordinates of the bottom-left corner
@@ -57,20 +57,8 @@ program poisson_solver
     do k = 1, nIterations/nIterationsOutput
         do h = 1, nIterationsOutput 
             phi2 = phi1 
-
             call cpu_time(jacobi_start_time)
             call compute_jacobi(phi1, phi2, rho, nFields, grid)
-            ! do iField = 1, nFields
-            !     grid = phi1(iField)%grid
-
-            !     do j = 2, Nx-1
-            !         do i = 2, Ny-1  
-            !             index = grid%get_index(i, j)
-            !             aspect2 = (grid%dx(2) / grid%dx(1)) * (grid%dx(2) / grid%dx(1))
-            !             phi2(iField)%data(index) = 0.5 * ((phi1(iField)%data(index - 1) + phi1(iField)%data(index + 1)) / (1.0_dp + 1.0_dp / aspect2) + (phi1(iField)%data(index - (Ny+2)) + phi1(iField)%data(index + (Ny+2))) / (1.0_dp + aspect2) - rho(iField)%data(index) * grid%dx(1) ** 2 / (1.0_dp + aspect2))
-            !         end do 
-            !     end do
-            ! end do  
             call cpu_time(jacobi_end_time)
             total_jacobi_time = total_jacobi_time + (jacobi_end_time - jacobi_start_time)    
         end do 
@@ -83,7 +71,7 @@ program poisson_solver
     call cpu_time(total_end_time)
 
     print*, "Finished!"
-    print*, "Took:", total_end_time-total_start_time, "s"
+    print*, "Took:", (total_end_time-total_start_time), "s"
     print*, "On average, each jacobi took:", (total_jacobi_time/nIterations), "s"
 
     deallocate(rho,phi1,phi2,stat=istat)
