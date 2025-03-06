@@ -1,7 +1,6 @@
 module field_module
     use grid_module
     implicit none
-    ! integer, parameter :: dp = selected_real_kind(15,300)
 
     type :: field_t
         real(8), allocatable :: data(:)   ! Use allocatable instead of pointer

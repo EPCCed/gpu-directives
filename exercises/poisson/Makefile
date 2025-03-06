@@ -17,7 +17,7 @@ TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)
 ROCM ?= true
 
 OBJ :=	poisson_solver.o timer.o grid.o bc.o 
-FORTRAN_SRC := jacobi.f90
+FORTRAN_SRC := jacobi.f90 poisson_solver.f90 field.f90 grid.f90 
 
 OMP_KERNEL := jacobi.o 
 HIP_KERNEL := jacobi_kernel.hip.o
