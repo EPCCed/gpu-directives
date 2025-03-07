@@ -2,6 +2,19 @@
 #include "grid.h"
 #include "hip/hip_runtime.h"
 
+
+#define gpuCheck(call)                                                                          \
+do{                                                                                             \
+    hipError_t gpuErr = call;                                                                   \
+    if(hipSuccess != gpuErr){                                                                   \
+        printf("GPU API Error - %s:%d: '%s'\n", __FILE__, __LINE__, hipGetErrorString(gpuErr)); \
+        exit(1);                                                                                \
+    }                                                                                           \
+}while(0)
+
+
+
+
 __global__ void compute_jacobi_hip_kernel(double * field_phi_new, double * field_phi_old, double * field_rho, grid_t * g )
 {
     int i  = blockDim.x * blockIdx.x + threadIdx.x;
@@ -22,11 +35,12 @@ __global__ void compute_jacobi_hip_kernel(double * field_phi_new, double * field
     
 }
 
-
 void launch_compute_jacobi_hip(double * phi_new_dev, double * phi_old_dev, double * rho_dev, grid_t * g_dev, int nx, int ny )
 {
     dim3 blockSize(8,8*2,1);
     dim3 gridSize((nx+1)/8,(ny+1)/(8*2),1);
-    compute_jacobi_hip_kernel<<<blockSize,gridSize>>>(phi_new_dev, phi_old_dev, rho_dev,g_dev);
-    
+    compute_jacobi_hip_kernel<<<gridSize,blockSize>>>(phi_new_dev, phi_old_dev, rho_dev,g_dev);
+    gpuCheck( hipGetLastError() );
+    gpuCheck ( hipDeviceSynchronize() );
+
 }
