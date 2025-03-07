@@ -10,5 +10,5 @@
 
 #export CRAY_ACC_DEBUG=3
 
-
-srun --ntasks=1 --cpus-per-task=1  ./poisson
+#srun --ntasks=1 --cpus-per-task=1  ./poisson
+srun --ntasks=1 --cpus-per-task=1 rocprof --hip-trace --parallel-kernels ./poisson 
