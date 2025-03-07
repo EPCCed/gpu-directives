@@ -55,13 +55,16 @@ program poisson_solver
     print*, "Starting iterations for", nFields, "fields... "
 
     do k = 1, nIterations/nIterationsOutput
-        do h = 1, nIterationsOutput 
-            phi2 = phi1 
-            call cpu_time(jacobi_start_time)
-            call compute_jacobi(phi1, phi2, rho, nFields, grid)
-            call cpu_time(jacobi_end_time)
-            total_jacobi_time = total_jacobi_time + (jacobi_end_time - jacobi_start_time)    
-        end do 
+        !$omp target data map(tofrom: phi1(nFields),phi2(nFields),rho(nFields)) & 
+        !$omp map(to: grid%dx, grid%n)
+            do h = 1, nIterationsOutput 
+                phi2 = phi1 
+                call cpu_time(jacobi_start_time)
+                call compute_jacobi(phi1, phi2, rho, nFields, grid)
+                call cpu_time(jacobi_end_time)
+                total_jacobi_time = total_jacobi_time + (jacobi_end_time - jacobi_start_time)    
+            end do 
+        !$omp end target data
 
         do iField = 1, nFields
             call print_to_file(phi2(iField), iField, k*nIterationsOutput)

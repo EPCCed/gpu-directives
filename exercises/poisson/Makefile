@@ -3,6 +3,7 @@ CXX := CC
 F90 := ftn
 HIPCXX:= hipcc
 CXXFLAGS := -fopenmp -O2 -std=c++17
+F90FLAGS := -fopenmp 
 
 LFLAGS := -fopenmp -lroctracer64 -lroctx64 -O2
 HIPCXXFLAGS:= -O2 -std=c++17 -x hip -D__HIP_ROCclr__ --rocm-path=${ROCM_PATH} -D__HIP_PLATFORM_AMD__ --offload-arch=gfx90a
@@ -36,7 +37,7 @@ poisson_cxx: $(OBJ) $(OMP_KERNEL)
 	$(CXX) $(LFLAGS) $(OBJ) $(OMP_KERNEL) -o $@
 
 poisson_f90: $(FORTRAN_SRC)
-	$(F90) $(FORTRAN_SRC) -o $@
+	$(F90) $(F90FLAGS) $(FORTRAN_SRC) -o $@
 
 poisson_rocm: $(OBJ) $(HIP_KERNEL)
 	$(CXX) $(LFLAGS) $(OBJ) $(HIP_KERNEL) -o $@
