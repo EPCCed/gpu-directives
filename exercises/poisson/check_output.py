@@ -5,6 +5,33 @@ import matplotlib.pylab as plt
 import argparse
 
 
+import re
+
+
+
+
+def sort_natural(l):
+    """ 
+    Sort the given list in the way that humans expect.
+    """
+
+    def tryint(s):
+        try:
+            return int(s)
+        except:
+            return s
+        
+
+    def alphanum_key(s):
+        """ Turn a string into a list of string and number chunks.
+                "z23a" -> ["z", 23, "a"]
+        """
+        
+        return [ tryint(c) for c in re.split('([0-9]+)', s) ]
+
+    l.sort(key=alphanum_key)
+
+
 def get_size(f):
     return struct.unpack('1L', bytearray(f.read(8)))[0]
 
@@ -26,11 +53,11 @@ def generate_mesh(nx,ny):
     return X.transpose(),Y.transpose()
 
 
-def make_plot(file):
+def make_plot(file,color):
     matplotlib.use('Qt5Agg')
     (X,Y),phi=read_field(file)
     r=np.sqrt(X**2 + Y**2)
-    plt.plot( r.flatten(),phi.flatten(),"o",label="phi")
+    plt.plot( r.flatten(),phi.flatten(),"o",label="phi",color=color)
 
 def get_diff(file1,file2):
     (X1,Y1),phi1=read_field(file1)
@@ -62,8 +89,18 @@ if __name__ == "__main__":
              raise ValueError("You must provide exactly two files to compare.")
         
     if args.plot :
-        for file in args.files:
-                make_plot(file)
+        
+
+        files=sort_natural(args.files)
+        colors = plt.cm.summer(np.linspace(0.8,0.1,len(args.files)))
+
+        for i,file in enumerate(args.files):
+                print(file)
+                make_plot(file,color=colors[i])
+        
+        plt.xlabel("r")
+        plt.ylabel(r"$\phi(r)$")       
+        
         plt.show()
     
     
