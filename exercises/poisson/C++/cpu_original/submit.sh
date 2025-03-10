@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=poisson
+#SBATCH --job-name=poisson-gpu
 #SBATCH --gpus=1
 #SBATCH --nodes=1
 #SBATCH --time=00:05:00

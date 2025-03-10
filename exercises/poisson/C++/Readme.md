@@ -2,7 +2,7 @@
 
 ## Expected performance on MI210
 
-With 10000 interactions, 500x500 grid
+With 10000 interactions, 500x500 grid for the C++ version
 
 Kernel | Notes | nFields | Time
 -- | -- | -- | ---

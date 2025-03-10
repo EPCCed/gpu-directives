@@ -17,10 +17,19 @@ TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)
 
 ROCM ?= true
 
+<<<<<<< HEAD:exercises/poisson/C++/cpu_original/Makefile
 OBJ :=	poisson_solver.o timer.o grid.o bc.o
 
 OMP_KERNEL := jacobi.o
 HIP_KERNEL := jacobi_kernel.hip.o jacobi_hip.o
+=======
+OBJ :=	poisson_solver.o timer.o grid.o bc.o 
+FORTRAN_SRC := grid.f90 field.f90 jacobi.f90 poisson_solver.f90
+FORTRAN_OBJ := $(FORTRAN_SRC:.f90=.o)
+
+OMP_KERNEL := jacobi.o 
+HIP_KERNEL := jacobi_kernel.hip.o
+>>>>>>> master:exercises/poisson/Makefile
 
 # default rule
 default: poisson_cxx poisson_f90
@@ -43,4 +52,8 @@ poisson_rocm: $(OBJ) $(HIP_KERNEL)
 .PHONY: clean
 
 clean:
+<<<<<<< HEAD:exercises/poisson/C++/cpu_original/Makefile
 	rm -f poisson poisson_rocm $(OBJ) $(OMP_KERNEL)  $(HIP_KERNEL) 
+=======
+	rm -f poisson_cxx poisson_f90 poisson_rocm $(OBJ) $(OMP_KERNEL) $(HIP_KERNEL) $(FORTRAN_OBJ) *.mod
+>>>>>>> master:exercises/poisson/Makefile

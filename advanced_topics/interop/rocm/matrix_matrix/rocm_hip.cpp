@@ -64,7 +64,7 @@ void print_matrix(double * A,size_t N,size_t M)
 int main(int argc, char ** argv)
 {   
 
-    size_t N=2,M=2,K=2;
+    size_t N=4,M=2,K=3;
     double * A;
     double * B;
     double * C;
@@ -114,15 +114,15 @@ int main(int argc, char ** argv)
     {
         rocblas_dgemm(  
             handle,
-            trans_a, trans_b,
-            (int)K,
+            trans_b, trans_a,
             (int)M,
+            (int)K,
             (int)N,
             &alpha,
-            A_d,
-            (int)N,
             B_d,
             (int)M,
+            A_d,
+            (int)N,
             &beta,
             C_d,
             (int)M
@@ -133,6 +133,11 @@ int main(int argc, char ** argv)
     HIP_ASSERT( hipPeekAtLastError() );
     HIP_ASSERT( hipMemcpy(C, C_d, K*M*sizeof(double),  hipMemcpyDeviceToHost) );
 
+    std::cout << "A" << std::endl;
+    print_matrix(A,K,N);
+    std::cout << "B" << std::endl;
+    print_matrix(B,N,M);
+    std::cout << "C" << std::endl;
     print_matrix(C,K,M);
     
     std::cout << "Success" << std::endl;
