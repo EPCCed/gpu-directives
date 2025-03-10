@@ -20,7 +20,7 @@ program poisson_solver
     shape = [Nx, Ny]
 
     ! Simulation parameters: 
-    nFields = 10
+    nFields = 4
     nIterations = 100000                ! Number of time steps
     nIterationsOutput = nIterations/5   ! Number of times we output a file
 
@@ -56,6 +56,7 @@ program poisson_solver
 
     do k = 1, nIterations/nIterationsOutput
 
+        ! This handling is needed if we want to compute multiple fields. 
         !$omp target data map(tofrom: phi1, phi2, rho, grid)
         do iField = 1, nFields
             !$omp target enter data map(to: phi1(iField)%data, phi2(iField)%data) map(to: rho(iField)%data)
@@ -73,21 +74,6 @@ program poisson_solver
             !$omp target exit data map(from: phi1(iField)%data, phi2(iField)%data) map(from: rho(iField)%data)
         end do
         !$omp end target data
-
-
-
-        ! !$omp target data map(tofrom: phi1(:),phi2(:),rho(:)) & 
-        ! !$omp map(tofrom: phi1(:)%data, phi2(:)%data) map(to: rho(:)%data) &
-        ! !$omp map(to: grid) 
-        ! !%dx, grid%n)
-        !     do h = 1, nIterationsOutput 
-        !         phi2 = phi1 
-        !         call cpu_time(jacobi_start_time)
-        !         call compute_jacobi(phi1, phi2, rho, nFields, grid)
-        !         call cpu_time(jacobi_end_time)
-        !         total_jacobi_time = total_jacobi_time + (jacobi_end_time - jacobi_start_time)    
-        !     end do 
-        ! !$omp end target data
 
         do iField = 1, nFields
             call print_to_file(phi2(iField), iField, k*nIterationsOutput)
