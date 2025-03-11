@@ -30,13 +30,14 @@ Log on to ARCHER2: \texttt{ssh username@login.archer2.ac.uk}.
 
 \section{Compiling and Running}
 
-The code is contained in \texttt{pi.tar}. The tar file can be fetched from GitHub by cloning the course repository with the following command:
-
-\texttt{git clone ...} \\
+The code is contained in \texttt{pi.tar}. The tar file can be fetched from GitHub by cloning the course repository with the following commands:
+\\~\\
+\indent\texttt{git clone https://github.com/EPCCed/archer2-GPU-directives.git} \\
+\indent\texttt{git checkout 2025-03-12} \\ 
 
 \noindent Alternatively, the file can be found on ARCHER2 and copied into your \texttt{/work/} directory with the command:
-
-\texttt{cp ...} \\
+\\~'\\
+\indent\texttt{cp /work/z19/shared/GPUdir/pi.tar .} \\
 
 \noindent Unpack the file with the command: \texttt{tar -xvf pi.tar}. There are equivalent C and Fortran versions available in \texttt{pi/C} and \texttt{pi/Fortran}, respectively.\\
 
@@ -46,10 +47,10 @@ The code is contained in \texttt{pi.tar}. The tar file can be fetched from GitHu
 \indent \texttt{module load rocm} \\
 \indent \texttt{module load craype-accel-amd-gfx90a} \\
 \indent \texttt{module load craype-x86-milan} 
-
+\\~\\
 \noindent Makefiles are provided to assist with compilation. In order to compile the code, simply run \texttt{make}, and to remove the generated executable, run \texttt{make clean}. \\
 
-\noindent Slurm scripts are also provided and should be submitted with the command \texttt{sbatch jobscript.slurm}. Before the first submission, the script must be edited to include the correct budget code, which is the project code for the course, e.g. \texttt{ta123}. 
+\noindent Slurm scripts are also provided and should be submitted with the command \texttt{sbatch jobscript.slurm}. Before the first submission, the script must be edited to include the correct budget code, which is the project code for the course, e.g. \texttt{ta192}. 
 
 % TODO: reservation
 
