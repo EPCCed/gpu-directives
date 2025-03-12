@@ -2,7 +2,7 @@
 
 if [[ -z "${OPENMP_OFFLOAD_COURSE_ROOT}" ]]; then
     
-    #module load cpe/23.09
+    module load cpe/23.09
     module load PrgEnv-cray
     module load rocm
     module load craype-accel-amd-gfx90a

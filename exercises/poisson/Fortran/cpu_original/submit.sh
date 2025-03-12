@@ -9,6 +9,6 @@
 
 #export CRAY_ACC_DEBUG=3
 
-source ../env-archer2.sh
+source ../../env-archer2.sh
 
 srun --ntasks=1 --cpus-per-task=1  ./poisson

@@ -42,4 +42,4 @@ poisson_rocm: $(OBJ) $(HIP_KERNEL)
 .PHONY: clean
 
 clean:
-	rm -f poisson poisson_rocm $(OBJ) $(OMP_KERNEL) $(HIP_KERNEL) $(FORTRAN_OBJ) *.mod
+	rm -f poisson poisson_rocm *.dat $(OBJ) $(OMP_KERNEL) $(HIP_KERNEL) $(FORTRAN_OBJ) *.mod
