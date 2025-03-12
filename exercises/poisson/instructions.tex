@@ -4,7 +4,7 @@
 \usepackage{todonotes}
 \usepackage{xcolor}
 
-\title{GPU Programming with Directives Exercise \\\ Solving the Poisson equation using the Jacobi iterations}
+\title{GPU Programming with Directives Exercise \\\ Solving the Poisson equation using Jacobi iterations}
 \author{}
 \date{}
 
@@ -26,14 +26,12 @@ The solution is obtained using an iterative Jacobi solver. At every iteration th
 We keep iterating until we converge to an approximate solution of the Poisson equation.
 
 \section{Compiling and Running}
-Unpack the poisson tar file
-`
-tar -zxvf poisson.tar.gz
-```
-In the poisson folder you will find the \texttt{env-archer2.sh} file. You can set-up your environment by sourcing the file.
+Unpack the poisson tar file with the command \texttt{tar -zxvf poisson\_exercise.tar.gz}.
+
+In the \texttt{poisson\_exercise} folder you will find the \texttt{env-archer2.sh} file. You can set-up your environment by sourcing the file.
 
 \begin{lstlisting}[language=Bash]
-cd poisson
+cd poisson_exercise
 source env-archer2.sh
 \end{lstlisting}
 
@@ -60,16 +58,23 @@ python3 check_output.py --compare original_phi0_80000.dat new_phi0_80000.dat
     \item Be sure to save the original output files \texttt{(phi0\_*)} for comparison to your completed solution. 
 \end{itemize}
 
+You can also plot the solution obtained with 
+\begin{lstlisting}[language=Python]
+python3 check_output.py --plot phi*.dat
+\end{lstlisting}
+
+You will need X11 forwarding in order to visualize the plots. This can be done by adding the \texttt{-XY} flag to the \texttt{ssh} command when logging in.
+
 \subsection{Offload the main computational loop with OpenMP}
-The main loop is containted in the \texttt{jacobi.cpp} file.
+The main loop is containted in the \texttt{jacobi.cpp}(\texttt{jacobi.f90} for Fortran) file.
 \begin{itemize}
-    \item In the \texttt{jacobi.cpp} file, offload to the device the main loop. Keep care to map all the variables accessed from the computational kernel. There are a lot of them !
-    \item By modifying the \texttt{jacobi.cpp} file the data is transferred at every iteration. Try to have all the data transferred only once at the beginning of the simulation and once before every output. You might want to modify the \texttt{poisson\_solver.cpp} file.
-    \item There are a lot of variables to transfer between the CPU and GPU, but most of these are grouped in custom classes. Create a custom data mapper to map all of the variables in the data structure. Take care to avoid mapping the same variable twice.
+    \item In the \texttt{jacobi.cpp} ( \texttt{jacobi.f90} for Fortran) file, offload to the device the main loop. Keep care to map all the variables accessed from the computational kernel. There are a lot of them !
+    \item After completing the step above the data is transferred at every iteration. Try to have all the data transferred only once at the beginning of the simulation and once before every output. You might want to modify the \texttt{poisson\_solver.cpp} ( \texttt{poisson\_solver.f90} for Fortran) file.
+    \item There are a lot of variables to transfer between the CPU and GPU, but most of these are grouped in custom classes. Create a custom data mapper to map all of the variables in the data structure. Take care to avoid mapping the same variable twice.  \textbf{(C++ only)}
     
 \end{itemize}
     
-\subsection{Offload the main computational loop with hip}
+\subsection{Offload the main computational loop with hip (C++ only )}
 It is sometimes useful to mix OpenMP kernel with hip/cuda kernels or using vendor specific libraries for linear algebra, Fourier transforms and other common mathematical tasks. 
 The \texttt{jacobi\_hip.cpp} file contains an alternative implementation of the Jacobi kernel using hip. You can use this implementation by compiling with: 
 
@@ -86,7 +91,7 @@ This course does not cover hip, so we do not expect you to modify the jacobi hip
 \end{itemize}
 
 \subsection{Offload multiple fields to the device concurrently}
-In \texttt{poisson\_solver.cpp} set the \texttt{nFields} variable to 10. This will solve \texttt{nFields} independent equations. As the iteration of fields are all independent of each other, they can execute concurrently on the device. However by default offloaded parallel regions are executed serially on the device. Use async constructs ( such as openmp tasks and \texttt{nowait} clauses ) to offload parallel regions corresponding to different fields on the device concurrently.
+In \texttt{poisson\_solver.cpp} ( \texttt{poisson\_solver.f90} for Fortran ) set the \texttt{nFields} variable to 10. This will solve \texttt{nFields} independent equations. As the iteration of fields are all independent of each other, they can execute concurrently on the device. However by default offloaded parallel regions are executed serially on the device. Use async constructs ( such as openmp tasks and \texttt{nowait} clauses ) to offload parallel regions corresponding to different fields on the device concurrently.
 \begin{enumerate}
     \item Use async constructs to offload parallel regions contained in different iterations of the loop over fields concurrently. Can you see a difference in performance ?
     \item Use OpenMP parallelism to distribute different fields across different CPU threads, but still offloading the computational kernels to the device.  Can you see a difference in performance ?
@@ -102,7 +107,7 @@ There are several performance limiters that can affect the performance of an app
     \item Kernel launch latency
 \end{enumerate}
 
-In this exercise you will explore the performance of the offloaded openmp region in the \texttt{jacobi.cpp} file.
+In this exercise you will explore the performance of the offloaded OpenMP region.
 \subsection{Profiling}
 In order to analyze what is limiting the performance of a kernel it is useful to use a profiler tool to obtain information on how efficiently your computation kernel is using the device. A profile contains information on how efficiently you are using the hardware: wavefront occupancy, achieved bandwidth etc...
 
@@ -118,7 +123,7 @@ Below you can find a description of some useful sections:
 
 \subsection{ Optimisations}
 \begin{enumerate}
-    \item Run the offloaded version and compare with the CPU only version. How do the run times for the kernels compare ? Which of the performance limiters described above might be limiting the performance of the kernel ? Use the profiler report to help find possible area of improvements.
+    \item Run the offloaded version obtained from resolving exercise 3.1 and compare with the CPU only version. How do the run times for the kernels compare ? Which of the performance limiters described above might be limiting the performance of the kernel ? Use the profiler report to help find possible area of improvements.
     \item Collapse the two loops by adding the \texttt{collapse(2)} clause. Does the performance improve ? If so, which of the performance limiters above  was addressed by collapsing the two loops ?
     \item Exchange the loop order. Does the performance improve ? If so, why do you think exchanging the loop order improved performance ?
 \end{enumerate}
