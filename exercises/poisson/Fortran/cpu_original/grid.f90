@@ -23,7 +23,7 @@ contains
         integer :: index
         index = (j + 1) + (i + 1) * (this%n(2) + 2)
     end function get_index
-
+    
     ! Computes x-coordinate at index i
     pure function x(this, i) result(x_coord)
         class(grid_t), intent(in) :: this

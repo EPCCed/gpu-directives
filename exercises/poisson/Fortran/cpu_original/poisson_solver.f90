@@ -8,6 +8,7 @@ program poisson_solver
     integer :: iField, k, h                             ! Iterators
     integer :: nFields, nIterations, nIterationsOutput  ! Simulation parameters 
     integer :: Nx, Ny, istat
+    real(kind=dp) :: distance = 0
     integer :: shape(2)                                 ! Grid shape
 
     real(kind=dp) :: left_box(2) = [-1.0_dp, -1.0_dp]   ! Coordinates of the bottom-left corner
@@ -21,9 +22,9 @@ program poisson_solver
 
     ! Simulation parameters: 
     nFields = 1
-    nIterations = 100000                ! Number of time steps
-    nIterationsOutput = nIterations/5   ! Number of times we output a file
-
+    nIterations = 10000           ! Number of time steps
+    nIterationsOutput = nIterations/10   ! Number of times we output a file
+    
     print*, "Initialising... "
 
     ! Create a grid using a structure to match C++ implementation 
@@ -40,15 +41,15 @@ program poisson_solver
 
         ! Initialise fields with a gaussian 
         call init_laplacian_gaussian(10.0_dp, rho(iField), grid)
-        call init_gaussian(20.0_dp, phi1(iField), grid, 0.5_dp)
-        call init_gaussian(20.0_dp, phi2(iField), grid, 0.5_dp)
-        
+        call init_gaussian(0.1_dp, phi1(iField), grid, 30.0_dp)
+        call init_gaussian(0.1_dp, phi2(iField), grid, 30.0_dp)
+
         ! Print field using: 
         ! call phi1(iField)%print_field()
 
         ! Boundary conditions are implict due to the method of allocation & iteration later
 
-        call print_to_file(rho(iField), iField, 0)
+        call print_to_file(phi1(iField), iField, 0)
     end do
 
     call cpu_time(total_start_time)
@@ -56,16 +57,19 @@ program poisson_solver
 
     do k = 1, nIterations/nIterationsOutput
         do h = 1, nIterationsOutput 
-            phi2 = phi1 
+            phi1 = phi2
             call cpu_time(jacobi_start_time)
             call compute_jacobi(phi1, phi2, rho, nFields, grid)
             call cpu_time(jacobi_end_time)
             total_jacobi_time = total_jacobi_time + (jacobi_end_time - jacobi_start_time)    
         end do 
-
+        
+       
         do iField = 1, nFields
+            distance=sum( abs(phi2(iField)%data - phi1(iField)%data)*grid%dx(1)*grid%dx(2) )
+            write(*,*) "Convergence field" , iField, ": " , distance
             call print_to_file(phi2(iField), iField, k*nIterationsOutput)
-        end do 
+        end do
     end do 
 
     call cpu_time(total_end_time)
@@ -97,6 +101,8 @@ subroutine init_gaussian(A, field, grid, alpha)
             k = grid%get_index(i,j)
             ! Assign the Gaussian value
             field%data(k) = A * exp(-alpha * r2)
+            !write(*,*) i,j,k, r2, field%data(k), alpha , A
+
         end do
     end do
 end subroutine init_gaussian

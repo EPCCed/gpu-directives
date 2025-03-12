@@ -22,8 +22,8 @@ program poisson_solver
     shape = [Nx, Ny]
 
     ! Simulation parameters: 
-    nFields = 10
-    nIterations = 10000          ! Number of time steps
+    nFields = 1
+    nIterations = 10          ! Number of time steps
     nIterationsOutput = nIterations/5   ! Number of times we output a file
     
     print*, "Initialising... "
