@@ -2,7 +2,7 @@
 
 ## Expected performance on MI210
 
-With 10000 interactions, 500x500 grid for the C++ version
+With 10000 interactions, 500x500 grid for the C++ version.
 
 Kernel | Notes | nFields | Time
 -- | -- | -- | ---
@@ -17,6 +17,4 @@ compute_jacobi | GPU no-opt + data transfer once per block (mapper) + collapse +
 compute_jacobi | GPU no-opt + data transfer once per block (mapper) + collapse + loop order + async (1 thread) | 10 |   0.266847 ms/it
 compute_jacobi | GPU no-opt + data transfer once per block (mapper) + collapse + loop order + async(1 thread) | 10 |   0.247771 ms/it
 compute_jacobi | GPU no-opt + data transfer once per block (mapper) + collapse + loop order + async (4 threads) | 10 |   0.137915 ms/it
-
-
 
