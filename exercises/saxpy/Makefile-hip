@@ -1,0 +1,38 @@
+#
+# You should have loaded the following modules:
+#
+# module load rocm
+# module load craype-accel-amd-gfx90a
+# module load craype-x86-milan
+#
+
+MF=	Makefile-hip
+CC=	hipcc
+CFLAGS=	--offload-arch=gfx90a -x hip
+
+EXE=	hipsaxpy
+
+SRC= \
+	hipsaxpy.c
+
+#
+# No need to edit below this line
+#
+
+.SUFFIXES:
+.SUFFIXES: .c .o
+
+OBJ=	$(SRC:.c=.o)
+
+.c.o:
+	$(CC) $(CFLAGS) -c $<
+
+all:	$(EXE)
+
+$(EXE):	$(OBJ)
+	$(CC) -o $@ $(OBJ) $(LFLAGS)
+
+$(OBJ):	$(MF)
+
+clean:
+	rm -f $(OBJ) $(EXE) core

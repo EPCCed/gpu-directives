@@ -1,0 +1,78 @@
+\documentclass{article}
+
+\begin{document}
+
+\title{GPU Programming with Directives Exercise \\\
+  Logging on, Compiling and Running}
+
+\author{}
+\date{}
+
+\maketitle
+
+\section{Introduction}
+
+The purpose of this exercise is to check you can compile and run
+simple GPU programs on ARCHER2.
+
+\section{Connecting to ARCHER2}
+
+Log on to ARCHER2:
+\begin{verbatim}
+  ssh username@login.archer2.ac.uk
+\end{verbatim}
+
+\noindent Note: for this exercise, it is important to use the \texttt{/work}
+file system and not the \texttt{/home} file system:
+
+\begin{verbatim}
+  cd /work/project/project/username/
+\end{verbatim}
+
+\section{Compiling and Running}
+The code is contained in \texttt{saxyp.tar}. The tar file can be fetched from GitHub by
+cloning the course repository with the following commands:
+
+\begin{verbatim}
+  git clone https://github.com/EPCCed/archer2-GPU-directives.git
+  cd archer2-GPU-directives
+  git checkout 2025-04-22
+  cd Exercises
+\end{verbatim}
+
+\noindent Alternatively, the file can be found on ARCHER2 and copied into your
+\texttt{/work/} directory with the command:
+
+\begin{verbatim}
+  cp /work/z19/shared/GPUdir/saxpy.tar .
+\end{verbatim}
+
+\noindent Now unpack the file:
+\begin{verbatim}
+  tar -xvf saxpy.tar
+\end{verbatim}
+
+\section{Compiling and Running}
+
+Since this exercise will involve offloading to GPUs with OpenMP
+directives, certain modules must be loaded prior to compiling the
+code:
+
+\begin{verbatim}
+  module load PrgEnv-amd
+  module load rocm
+  module load craype-accel-amd-gfx90a
+  module load craype-x86-milan
+\end{verbatim}
+
+\noindent There are two examples, one using HIP and the other OpenMP. To compile and run the HIP example:
+
+\begin{verbatim}
+  cd saxpy
+  make -f Makefile-hip
+  sbatch hipsaxpy.slurm
+\end{verbatim}
+
+\noindent and similarly for the OpenMP example.
+
+\end{document}
